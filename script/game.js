@@ -933,6 +933,10 @@ const stateUpdaters = {
 
 function drawRoom(ctx, room) {
   ctx.fillStyle = '#000000';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 5;
 
   // Ceiling polygon: top strip down to the ceiling line
   ctx.beginPath();
@@ -969,6 +973,11 @@ function drawRoom(ctx, room) {
     ctx.closePath();
     ctx.fill();
   }
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
 }
 
 function drawProjectiles(ctx) {
