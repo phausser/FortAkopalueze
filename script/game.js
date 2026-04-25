@@ -3,6 +3,10 @@
 const CANVAS_WIDTH  = 960;
 const CANVAS_HEIGHT = 540;
 
+const SHIP_ROTATION_SPEED = 3.0;   // rad/s
+const SHIP_THRUST         = 250;   // px/s²
+const SHIP_DAMPING        = 0.99;  // Geschwindigkeits-Faktor pro Frame @ 60 fps
+
 // ─── Spielzustände ────────────────────────────────────────────────────────────
 
 const State = {
@@ -12,6 +16,24 @@ const State = {
   ESCAPE:  'escape',
   WIN:     'win',
 };
+
+// ─── Schiff ───────────────────────────────────────────────────────────────────
+
+const ship = {
+  x:     CANVAS_WIDTH  / 2,
+  y:     CANVAS_HEIGHT / 2,
+  angle: -Math.PI / 2,   // zeigt nach oben
+  vx:    0,
+  vy:    0,
+};
+
+function resetShip() {
+  ship.x     = CANVAS_WIDTH  / 2;
+  ship.y     = CANVAS_HEIGHT / 2;
+  ship.angle = -Math.PI / 2;
+  ship.vx    = 0;
+  ship.vy    = 0;
+}
 
 // ─── Eingabe ──────────────────────────────────────────────────────────────────
 
@@ -51,11 +73,36 @@ const game = {
 
 function updateMenu() {
   if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
+    resetShip();
     game.setState(State.PLAYING);
   }
 }
 
-function updatePlaying() {
+function updatePlaying(dt) {
+  // Rotation
+  if (input.isHeld('ArrowLeft'))  ship.angle -= SHIP_ROTATION_SPEED * dt;
+  if (input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
+
+  // Schub
+  if (input.isHeld('ArrowUp')) {
+    ship.vx += Math.cos(ship.angle) * SHIP_THRUST * dt;
+    ship.vy += Math.sin(ship.angle) * SHIP_THRUST * dt;
+  }
+  if (input.isHeld('ArrowDown')) {
+    ship.vx -= Math.cos(ship.angle) * SHIP_THRUST * dt;
+    ship.vy -= Math.sin(ship.angle) * SHIP_THRUST * dt;
+  }
+
+  // Dämpfung (frame-rate-unabhängig)
+  const d = Math.pow(SHIP_DAMPING, dt * 60);
+  ship.vx *= d;
+  ship.vy *= d;
+
+  // Position
+  ship.x += ship.vx * dt;
+  ship.y += ship.vy * dt;
+
+  // Menü
   if (input.isJustPressed('Escape')) {
     game.setState(State.MENU);
   }
@@ -85,6 +132,25 @@ const stateUpdaters = {
   [State.WIN]:     updateWin,
 };
 
+// ─── Render-Hilfsfunktionen ───────────────────────────────────────────────────
+
+function drawShip(ctx) {
+  ctx.save();
+  ctx.translate(ship.x, ship.y);
+  ctx.rotate(ship.angle);
+
+  ctx.beginPath();
+  ctx.moveTo( 16,   0);   // Nase – spitze Ecke vorne
+  ctx.lineTo(-11,  13);   // hinten links
+  ctx.lineTo(-11, -13);   // hinten rechts
+  ctx.closePath();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  ctx.restore();
+}
+
 // ─── Render-Logik pro Zustand ─────────────────────────────────────────────────
 
 function renderMenu(ctx) {
@@ -105,10 +171,7 @@ function renderPlaying(ctx) {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '16px Roboto, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Spiel läuft – ESC für Menü', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+  drawShip(ctx);
 }
 
 function renderDead(ctx) {
