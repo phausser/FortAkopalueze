@@ -1,690 +1,13 @@
-// ─── Konfiguration ────────────────────────────────────────────────────────────
-
-const CANVAS_WIDTH = 960;
-const CANVAS_HEIGHT = 540;
-
-const SHIP_ROTATION_SPEED = 3.0;
-const SHIP_THRUST = 250;
-const SHIP_DAMPING = 0.99;
-
-const ROOM_COUNT_MIN = 8;
-const ROOM_COUNT_MAX = 12;
-const MIN_TUNNEL_H = 120;
-const BG_COLORS = ['#3a1111', '#113511', '#3d1111', '#11113a', '#3a3d11'];
-
-// ─── Spielzustände ────────────────────────────────────────────────────────────
-
-const State = {
-  MENU: 'menu',
-  PLAYING: 'playing',
-  DEAD: 'dead',
-  ESCAPE: 'escape',
-  WIN: 'win',
-};
-
-// ─── Ressourcen ───────────────────────────────────────────────────────────────
-
-const resources = {
-  energy: 1.0,
-  shield: 1.0,
-  ammo: 1.0,
-};
-
-function resetResources() {
-  resources.energy = 1.0;
-  resources.shield = 1.0;
-  resources.ammo = 1.0;
-}
-
-// ─── Schiff ───────────────────────────────────────────────────────────────────
-
-const SHIP_RADIUS = 12;
-const RESTITUTION = 0.25;
-const COLLISION_DAMAGE = 0.05;
-const INVINCIBLE_TIME = 0.5;
-
-const PROJECTILE_SPEED = 600;
-const PROJECTILE_LENGTH = 8;
-const FIRE_COOLDOWN = 0.2;
-const PARTICLE_SPEED = 120;
-const PARTICLE_LIFETIME = 0.42;
-const PARTICLE_COUNT = 12;
-
-const ship = {
-  x: CANVAS_WIDTH / 2,
-  y: CANVAS_HEIGHT / 2,
-  angle: 0,
-  vx: 0,
-  vy: 0,
-  invincibleTimer: 0,
-  fireCooldown: 0,
-};
-
-function resetShip() {
-  const room = game.rooms[0];
-  ship.x = 100;
-  ship.y = room ? room.entranceY : CANVAS_HEIGHT / 2;
-  ship.angle = 0;
-  ship.vx = 0;
-  ship.vy = 0;
-  ship.invincibleTimer = 0;
-  ship.fireCooldown = 0;
-  resetResources();
-}
-
-function applyCollisionDamage() { applyDamage(COLLISION_DAMAGE); }
-
-function closestPointOnSegment(px, py, ax, ay, bx, by) {
-  const dx = bx - ax, dy = by - ay;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq < 0.0001) return { x: ax, y: ay };
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
-  return { x: ax + t * dx, y: ay + t * dy };
-}
-
-function resolveVsSegment(ax, ay, bx, by) {
-  const cp = closestPointOnSegment(ship.x, ship.y, ax, ay, bx, by);
-  const dx = ship.x - cp.x;
-  const dy = ship.y - cp.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist >= SHIP_RADIUS || dist < 0.0001) return false;
-
-  const nx = dx / dist;
-  const ny = dy / dist;
-
-  // Push out of wall
-  const overlap = SHIP_RADIUS - dist;
-  ship.x += nx * overlap;
-  ship.y += ny * overlap;
-
-  // Reflect velocity across surface normal (only if moving into wall)
-  const vDotN = ship.vx * nx + ship.vy * ny;
-  if (vDotN < 0) {
-    ship.vx -= (1 + RESTITUTION) * vDotN * nx;
-    ship.vy -= (1 + RESTITUTION) * vDotN * ny;
-  }
-  return true;
-}
-
-function resolveCollisions(room) {
-  const tEntrTop = room.entranceY - room.tunnelH / 2;
-  const tEntrBot = room.entranceY + room.tunnelH / 2;
-  const tExitTop = room.exitY - room.tunnelH / 2;
-  const tExitBot = room.exitY + room.tunnelH / 2;
-
-  // Ceiling segments
-  for (let i = 0; i < room.ceilingPoints.length - 1; i++) {
-    const a = room.ceilingPoints[i], b = room.ceilingPoints[i + 1];
-    if (ship.x + SHIP_RADIUS < a.x || ship.x - SHIP_RADIUS > b.x) continue;
-    if (resolveVsSegment(a.x, a.y, b.x, b.y)) applyCollisionDamage();
-  }
-
-  // Floor segments
-  for (let i = 0; i < room.floorPoints.length - 1; i++) {
-    const a = room.floorPoints[i], b = room.floorPoints[i + 1];
-    if (ship.x + SHIP_RADIUS < a.x || ship.x - SHIP_RADIUS > b.x) continue;
-    if (resolveVsSegment(a.x, a.y, b.x, b.y)) applyCollisionDamage();
-  }
-
-  // Left wall (zwei Segmente um Tunnel-Öffnung herum)
-  if (ship.x - SHIP_RADIUS < 0) {
-    if (resolveVsSegment(0, 0, 0, tEntrTop)) applyCollisionDamage();
-    if (resolveVsSegment(0, tEntrBot, 0, room.height)) applyCollisionDamage();
-  }
-
-  // Right wall
-  if (ship.x + SHIP_RADIUS > room.width) {
-    if (resolveVsSegment(room.width, 0, room.width, tExitTop)) applyCollisionDamage();
-    if (resolveVsSegment(room.width, tExitBot, room.width, room.height)) applyCollisionDamage();
-  }
-
-  // Hindernisse: beide Dreiecksseiten (Basis ist in der Wand versenkt)
-  for (const obs of room.obstacles) {
-    const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
-    if (resolveVsSegment(obs.x - obs.w / 2, obs.baseY, obs.x, tipY)) applyCollisionDamage();
-    if (resolveVsSegment(obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) applyCollisionDamage();
-  }
-}
-
-// ─── Feinde ───────────────────────────────────────────────────────────────────
-
-const ENEMY_HALF = 7;    // halbe Kantenlänge des Quadrats (14×14)
-const ENEMY_PATROL_SPD = 80;   // px/s
-const ENEMY_CHASE_SPD = 150;  // px/s
-const ENEMY_CHASE_DIST = 400;  // px – Aggro-Radius
-const ENEMY_FLEE_DIST = 500;  // px – zurück zu Patrol
-const ENEMY_MIN_DIST = 80;   // px – Mindestabstand beim Chase
-const ENEMY_FIRE_RATE = 1.5;  // s zwischen Schüssen (Hubschrauber)
-const ENEMY_PROJ_SPEED = 300;  // px/s
-const ENEMY_DMG = 0.08; // Energie-Verlust pro Treffer
-
-const TURRET_HP = 3;
-const TURRET_FIRE_RATE = 2.0;  // s zwischen Schüssen
-const TURRET_ROT_SPEED = 2.0;  // rad/s
-const TURRET_RANGE = 380;  // px – Sichtweite
-
-const MISSILE_SPEED = 120;         // px/s
-const MISSILE_TURN_SPEED = Math.PI / 60;  // rad/frame @ 60fps
-const MISSILE_SPLASH_RADIUS = 40;  // px
-const MISSILE_SPLASH_DAMAGE = 0.2;
-const MISSILE_EXPLODE_TIME = 0.4;  // s
-const MISSILE_TRAIL_INTERVAL = 1 / 30; // s – Trail-Partikel alle 2 Frames
-
-const LAUNCHER_RADIUS = 10;
-const LAUNCHER_HP = 3;
-const LAUNCHER_ALERT_DIST = 200;  // px – beginnt zu pochen
-const LAUNCHER_FIRE_DIST = 150;    // px – feuert Rakete
-const LAUNCHER_COOLDOWN = 10;     // s – Pause nach Abschuss
-
-const enemyProjectiles = [];
-const missiles = [];
-
-function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
-  const d1x = bx - ax, d1y = by - ay;
-  const d2x = dx - cx, d2y = dy - cy;
-  const cross = d1x * d2y - d1y * d2x;
-  if (Math.abs(cross) < 0.0001) return false;
-  const t = ((cx - ax) * d2y - (cy - ay) * d2x) / cross;
-  const u = ((cx - ax) * d1y - (cy - ay) * d1x) / cross;
-  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
-}
-
-function hasLineOfSight(room, x1, y1, x2, y2) {
-  for (let i = 0; i < room.ceilingPoints.length - 1; i++) {
-    const a = room.ceilingPoints[i], b = room.ceilingPoints[i + 1];
-    if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return false;
-  }
-  for (let i = 0; i < room.floorPoints.length - 1; i++) {
-    const a = room.floorPoints[i], b = room.floorPoints[i + 1];
-    if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return false;
-  }
-  for (const obs of room.obstacles) {
-    const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
-    if (segmentsIntersect(x1, y1, x2, y2, obs.x - obs.w / 2, obs.baseY, obs.x, tipY)) return false;
-    if (segmentsIntersect(x1, y1, x2, y2, obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) return false;
-  }
-  return true;
-}
-
-function spawnEnemiesForRoom(room, rng) {
-  room.enemies = [];
-  if (room.type === 'treasury') return;
-
-  const count = 1 + Math.floor(rng() * 3);
-  for (let i = 0; i < count; i++) {
-    const roll = rng();
-    if (roll < 0.2) {
-      // Launcher
-      for (let attempt = 0; attempt < 12; attempt++) {
-        const x = room.width * lerp(0.2, 0.8, rng());
-        const ceilY = interpolateWall(room.ceilingPoints, x);
-        const floorY = interpolateWall(room.floorPoints, x);
-        if (floorY - ceilY < LAUNCHER_RADIUS * 2 + 40) continue;
-        const y = lerp(ceilY + LAUNCHER_RADIUS + 10, floorY - LAUNCHER_RADIUS - 10, rng());
-        room.enemies.push({
-          kind: 'launcher',
-          x, y,
-          hp: LAUNCHER_HP,
-          state: 'idle',      // 'idle' | 'alert' | 'cooldown'
-          cooldownTimer: 0,
-          pulseTimer: 0,
-          dyingTimer: 0,
-        });
-        break;
-      }
-    } else if (roll < 0.55) {
-      // Turret
-      const x = room.width * lerp(0.15, 0.85, rng());
-      const onFloor = rng() < 0.5;
-      const wallY = onFloor
-        ? interpolateWall(room.floorPoints, x)
-        : interpolateWall(room.ceilingPoints, x);
-      room.enemies.push({
-        kind: 'turret',
-        x,
-        y: wallY,
-        mount: onFloor ? 'floor' : 'ceiling',
-        angle: onFloor ? -Math.PI / 2 : Math.PI / 2,
-        hp: TURRET_HP,
-        state: 'idle',
-        fireCooldown: rng() * TURRET_FIRE_RATE,
-        dyingTimer: 0,
-      });
-    } else {
-      // Helicopter
-      for (let attempt = 0; attempt < 12; attempt++) {
-        const x = room.width * lerp(0.2, 0.8, rng());
-        const ceilY = interpolateWall(room.ceilingPoints, x);
-        const floorY = interpolateWall(room.floorPoints, x);
-        if (floorY - ceilY < ENEMY_HALF * 2 + 40) continue;
-        const y = lerp(ceilY + ENEMY_HALF + 10, floorY - ENEMY_HALF - 10, rng());
-        room.enemies.push({
-          kind: 'helicopter',
-          x, y,
-          vx: (rng() < 0.5 ? 1 : -1) * ENEMY_PATROL_SPD,
-          vy: 0,
-          hp: 2,
-          state: 'patrol',
-          fireCooldown: rng() * ENEMY_FIRE_RATE,
-          dyingTimer: 0,
-        });
-        break;
-      }
-    }
-  }
-}
-
-function applyDamage(amount) {
-  if (ship.invincibleTimer > 0) return;
-  resources.energy -= amount;
-  ship.invincibleTimer = INVINCIBLE_TIME;
-}
-
-function updateEnemies(room, dt) {
-  for (let i = room.enemies.length - 1; i >= 0; i--) {
-    const e = room.enemies[i];
-
-    if (e.state === 'dying') {
-      e.dyingTimer -= dt;
-      if (e.dyingTimer <= 0) room.enemies.splice(i, 1);
-      continue;
-    }
-
-    if (e.kind === 'turret') {
-      updateTurret(e, room, dt);
-    } else if (e.kind === 'launcher') {
-      updateLauncher(e, dt);
-    } else {
-      updateHelicopter(e, room, dt);
-    }
-  }
-}
-
-function updateHelicopter(e, room, dt) {
-  const dx = ship.x - e.x;
-  const dy = ship.y - e.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (e.state === 'patrol' && dist < ENEMY_CHASE_DIST) e.state = 'chase';
-  if (e.state === 'chase' && dist > ENEMY_FLEE_DIST) e.state = 'patrol';
-
-  if (e.state === 'patrol') {
-    e.x += e.vx * dt;
-    if (e.x < ENEMY_HALF + 20 || e.x > room.width - ENEMY_HALF - 20) e.vx = -e.vx;
-  } else {
-    if (dist > ENEMY_MIN_DIST) {
-      e.x += (dx / dist) * ENEMY_CHASE_SPD * dt;
-      e.y += (dy / dist) * ENEMY_CHASE_SPD * dt;
-    }
-    e.fireCooldown -= dt;
-    if (e.fireCooldown <= 0) {
-      e.fireCooldown = ENEMY_FIRE_RATE;
-      const angle = Math.atan2(dy, dx);
-      enemyProjectiles.push({ x: e.x, y: e.y, vx: Math.cos(angle) * ENEMY_PROJ_SPEED, vy: Math.sin(angle) * ENEMY_PROJ_SPEED });
-    }
-  }
-
-  const cx = Math.max(0, Math.min(room.width, e.x));
-  e.y = Math.max(interpolateWall(room.ceilingPoints, cx) + ENEMY_HALF + 2,
-    Math.min(interpolateWall(room.floorPoints, cx) - ENEMY_HALF - 2, e.y));
-
-  if (dist < SHIP_RADIUS + ENEMY_HALF) applyDamage(ENEMY_DMG);
-}
-
-function updateLauncher(e, dt) {
-  e.pulseTimer += dt;
-
-  if (e.state === 'cooldown') {
-    e.cooldownTimer -= dt;
-    if (e.cooldownTimer <= 0) e.state = 'idle';
-    return;
-  }
-
-  const dx = ship.x - e.x, dy = ship.y - e.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist < LAUNCHER_FIRE_DIST) {
-    spawnMissile(e.x, e.y);
-    e.state = 'cooldown';
-    e.cooldownTimer = LAUNCHER_COOLDOWN;
-  } else if (dist < LAUNCHER_ALERT_DIST) {
-    e.state = 'alert';
-  } else {
-    e.state = 'idle';
-  }
-}
-
-function updateTurret(e, room, dt) {
-  const dx = ship.x - e.x;
-  const dy = ship.y - e.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist > TURRET_RANGE) { e.state = 'idle'; return; }
-
-  e.state = 'tracking';
-
-  // Lauf dreht sich zum Spieler
-  const targetAngle = Math.atan2(dy, dx);
-  let diff = targetAngle - e.angle;
-  // Kürzester Winkelweg
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
-  const step = TURRET_ROT_SPEED * dt;
-  e.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
-
-  // Lauf auf Cave-Seite beschränken
-  if (e.mount === 'floor') e.angle = Math.max(-Math.PI, Math.min(0, e.angle));
-  if (e.mount === 'ceiling') e.angle = Math.max(0, Math.min(Math.PI, e.angle));
-
-  // Schießen mit Sichtlinie
-  e.fireCooldown -= dt;
-  if (e.fireCooldown <= 0) {
-    e.fireCooldown = TURRET_FIRE_RATE;
-    const offsetY = e.mount === 'floor' ? -4 : 4;
-    if (hasLineOfSight(room, e.x, e.y + offsetY, ship.x, ship.y)) {
-      enemyProjectiles.push({
-        x: e.x, y: e.y,
-        vx: Math.cos(e.angle) * ENEMY_PROJ_SPEED,
-        vy: Math.sin(e.angle) * ENEMY_PROJ_SPEED,
-      });
-    }
-  }
-}
-
-function spawnMissile(x, y) {
-  const angle = Math.atan2(ship.y - y, ship.x - x);
-  missiles.push({
-    x, y,
-    angle,
-    vx: Math.cos(angle) * MISSILE_SPEED,
-    vy: Math.sin(angle) * MISSILE_SPEED,
-    state: 'homing',
-    explodeTimer: 0,
-    trailTimer: 0,
-  });
-}
-
-function updateMissiles(room, dt) {
-  for (let i = missiles.length - 1; i >= 0; i--) {
-    const m = missiles[i];
-
-    if (m.state === 'exploding') {
-      m.explodeTimer -= dt;
-      if (m.explodeTimer <= 0) missiles.splice(i, 1);
-      continue;
-    }
-
-    // Trail-Partikel
-    m.trailTimer -= dt;
-    if (m.trailTimer <= 0) {
-      m.trailTimer = MISSILE_TRAIL_INTERVAL;
-      for (let t = 0; t < 3; t++) {
-        const spread = (Math.random() - 0.5) * 0.6;
-        const trailAngle = m.angle + Math.PI + spread;
-        particles.push({
-          x: m.x, y: m.y,
-          vx: Math.cos(trailAngle) * 60 * Math.random(),
-          vy: Math.sin(trailAngle) * 60 * Math.random(),
-          life: 0.3,
-          maxLife: 0.3,
-        });
-      }
-    }
-
-    // Kurskorrektur
-    const targetAngle = Math.atan2(ship.y - m.y, ship.x - m.x);
-    let diff = targetAngle - m.angle;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    const step = MISSILE_TURN_SPEED * dt * 60;
-    m.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
-    m.vx = Math.cos(m.angle) * MISSILE_SPEED;
-    m.vy = Math.sin(m.angle) * MISSILE_SPEED;
-
-    m.x += m.vx * dt;
-    m.y += m.vy * dt;
-
-    // Wand-Kollision
-    let explode = false;
-    if (m.x < 0 || m.x > room.width) {
-      explode = true;
-    } else {
-      const cy = interpolateWall(room.ceilingPoints, m.x);
-      const fy = interpolateWall(room.floorPoints, m.x);
-      if (m.y < cy || m.y > fy) explode = true;
-    }
-
-    // Spieler-Kollision
-    const dx = m.x - ship.x, dy = m.y - ship.y;
-    if (dx * dx + dy * dy < (SHIP_RADIUS + 6) * (SHIP_RADIUS + 6)) {
-      explode = true;
-      applyDamage(MISSILE_SPLASH_DAMAGE);
-    }
-
-    if (explode) {
-      spawnImpactParticles(m.x, m.y);
-      // Extra Explosions-Partikel
-      for (let j = 0; j < 20; j++) {
-        const a = Math.random() * Math.PI * 2;
-        particles.push({ x: m.x, y: m.y, vx: Math.cos(a) * 180 * Math.random(), vy: Math.sin(a) * 180 * Math.random(), life: 0.5, maxLife: 0.5 });
-      }
-      // Splash-Schaden falls noch nicht getroffen
-      const sdx = m.x - ship.x, sdy = m.y - ship.y;
-      if (sdx * sdx + sdy * sdy < MISSILE_SPLASH_RADIUS * MISSILE_SPLASH_RADIUS) {
-        applyDamage(MISSILE_SPLASH_DAMAGE);
-      }
-      m.state = 'exploding';
-      m.explodeTimer = MISSILE_EXPLODE_TIME;
-    }
-  }
-}
-
-function drawMissiles(ctx) {
-  for (const m of missiles) {
-    if (m.state === 'exploding') continue;
-    ctx.save();
-    ctx.translate(m.x, m.y);
-    ctx.rotate(m.angle);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.moveTo(8, 0);
-    ctx.lineTo(-2, 4);
-    ctx.lineTo(-2, -4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-function updateEnemyProjectiles(room, dt) {
-  for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
-    const p = enemyProjectiles[i];
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-
-    let hit = p.x < 0 || p.x > room.width;
-    if (!hit) {
-      const cy = interpolateWall(room.ceilingPoints, p.x);
-      const fy = interpolateWall(room.floorPoints, p.x);
-      if (p.y < cy || p.y > fy) hit = true;
-    }
-
-    // Spieler treffen
-    if (!hit) {
-      const dx = p.x - ship.x, dy = p.y - ship.y;
-      if (dx * dx + dy * dy < (SHIP_RADIUS + 3) * (SHIP_RADIUS + 3)) {
-        applyDamage(ENEMY_DMG);
-        hit = true;
-      }
-    }
-
-    if (hit) {
-      spawnImpactParticles(p.x, p.y);
-      enemyProjectiles.splice(i, 1);
-    }
-  }
-}
-
-function drawEnemies(ctx, room) {
-  const S = ENEMY_HALF * 2;
-  for (const e of room.enemies) {
-    if (e.state === 'dying' && Math.floor(e.dyingTimer * 14) % 2 === 0) continue;
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#ffffff';
-
-    if (e.kind === 'turret') {
-      // Kugel (Basis)
-      ctx.beginPath();
-      ctx.arc(e.x, e.y, 6, 0, Math.PI * 2);
-      ctx.fill();
-      // Rohr
-      ctx.lineWidth = 6;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(e.x, e.y);
-      ctx.lineTo(e.x + Math.cos(e.angle) * 20, e.y + Math.sin(e.angle) * 20);
-      ctx.stroke();
-    } else if (e.kind === 'launcher') {
-      const pulse = e.state === 'alert'
-        ? LAUNCHER_RADIUS + Math.sin(e.pulseTimer * 8) * 3
-        : LAUNCHER_RADIUS;
-      ctx.beginPath();
-      ctx.arc(e.x, e.y, pulse, 0, Math.PI * 2);
-      ctx.fill();
-      // Innerer Ring zeigt Cooldown-Zustand
-      if (e.state === 'cooldown') {
-        ctx.strokeStyle = '#555555';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, pulse - 4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else {
-      ctx.fillRect(e.x - ENEMY_HALF, e.y - ENEMY_HALF, S, S);
-    }
-  }
-}
-
-function drawEnemyProjectiles(ctx) {
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = 'round';
-  for (const p of enemyProjectiles) {
-    const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-    const nx = p.vx / spd, ny = p.vy / spd;
-    ctx.beginPath();
-    ctx.moveTo(p.x - nx * 5, p.y - ny * 5);
-    ctx.lineTo(p.x + nx * 5, p.y + ny * 5);
-    ctx.stroke();
-  }
-}
-
-// ─── Projektile & Partikel ────────────────────────────────────────────────────
-
-const projectiles = [];
-const particles = [];
-
-function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
-  const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
-  const d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
-  const d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
-  const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-  const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-  return !(hasNeg && hasPos);
-}
-
-function spawnImpactParticles(x, y) {
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    particles.push({ x, y, vx: Math.cos(angle) * PARTICLE_SPEED, vy: Math.sin(angle) * PARTICLE_SPEED, life: PARTICLE_LIFETIME });
-  }
-}
-
-function shoot() {
-  if (ship.fireCooldown > 0) return;
-  resources.ammo -= 1 / 80;
-  projectiles.push({
-    x: ship.x + Math.cos(ship.angle) * 16,
-    y: ship.y + Math.sin(ship.angle) * 16,
-    vx: Math.cos(ship.angle) * PROJECTILE_SPEED,
-    vy: Math.sin(ship.angle) * PROJECTILE_SPEED,
-  });
-  ship.fireCooldown = FIRE_COOLDOWN;
-}
-
-function updateProjectiles(room, dt) {
-  for (let i = projectiles.length - 1; i >= 0; i--) {
-    const p = projectiles[i];
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-
-    let hit = p.x < 0 || p.x > room.width;
-
-    if (!hit) {
-      const ceilY = interpolateWall(room.ceilingPoints, p.x);
-      const floorY = interpolateWall(room.floorPoints, p.x);
-      if (p.y < ceilY || p.y > floorY) hit = true;
-    }
-
-    if (!hit) {
-      for (const obs of room.obstacles) {
-        const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
-        if (pointInTriangle(p.x, p.y, obs.x - obs.w / 2, obs.baseY, obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) {
-          hit = true; break;
-        }
-      }
-    }
-
-    // Feinde treffen
-    if (!hit) {
-      for (const e of room.enemies) {
-        if (e.state === 'dying') continue;
-        const hitRadius = e.kind === 'turret' ? 10 : e.kind === 'launcher' ? LAUNCHER_RADIUS : ENEMY_HALF;
-        const edx = p.x - e.x, edy = p.y - e.y;
-        if (edx * edx + edy * edy < hitRadius * hitRadius) {
-          e.hp--;
-          if (e.hp <= 0) { e.state = 'dying'; e.dyingTimer = 0.5; }
-          spawnImpactParticles(p.x, p.y);
-          hit = true;
-          break;
-        }
-      }
-    }
-
-    if (hit) {
-      spawnImpactParticles(p.x, p.y);
-      projectiles.splice(i, 1);
-    }
-  }
-}
-
-function updateParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.life -= dt;
-    if (p.life <= 0) particles.splice(i, 1);
-  }
-}
-
-// ─── Eingabe ──────────────────────────────────────────────────────────────────
-
-const input = {
-  held: new Set(),
-  justPressed: new Set(),
-  isHeld(key) { return this.held.has(key); },
-  isJustPressed(key) { return this.justPressed.has(key); },
-  clearFrameState() { this.justPressed.clear(); },
-};
-
-window.addEventListener('keydown', (event) => {
-  if (!input.held.has(event.code)) input.justPressed.add(event.code);
-  input.held.add(event.code);
-});
-window.addEventListener('keyup', (event) => {
-  input.held.delete(event.code);
-});
+import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_ROTATION_SPEED, SHIP_DAMPING, State } from './constants.js';
+import { input } from './input.js';
+import { resources } from './resources.js';
+import { particles, updateParticles, drawParticles } from './particles.js';
+import { generateLevel } from './level.js';
+import { spawnEnemiesForRoom } from './enemies.js';
+import { ship, resetShip, resolveCollisions, drawShip } from './ship.js';
+import { missiles, updateMissiles, drawMissiles } from './missiles.js';
+import { enemyProjectiles, updateEnemies, updateEnemyProjectiles, drawEnemies, drawEnemyProjectiles } from './enemies.js';
+import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projectiles.js';
 
 // ─── Spielstand ───────────────────────────────────────────────────────────────
 
@@ -700,131 +23,12 @@ const game = {
   setState(newState) { this.state = newState; },
 };
 
-// ─── Level-Generierung ────────────────────────────────────────────────────────
-
-function makePRNG(seed) {
-  let s = seed >>> 0;
-  return function () {
-    s = Math.imul(s ^ (s >>> 15), s | 1);
-    s ^= s + Math.imul(s ^ (s >>> 7), s | 61);
-    return ((s ^ (s >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function lerp(a, b, t) { return a + (b - a) * t; }
-
-function interpolateWall(points, x) {
-  for (let i = 0; i < points.length - 1; i++) {
-    if (x >= points[i].x && x <= points[i + 1].x) {
-      const t = (x - points[i].x) / (points[i + 1].x - points[i].x);
-      return lerp(points[i].y, points[i + 1].y, t);
-    }
-  }
-  return points[points.length - 1].y;
-}
-
-const ROOM_PARAMS = {
-  standard: { wMin: 1400, wMax: 2000, hMin: 580, hMax: 700, ceilAmp: 100, floorAmp: 100, minPass: 150, pts: 7, maxObs: 2 },
-  narrow: { wMin: 1200, wMax: 1600, hMin: 560, hMax: 640, ceilAmp: 150, floorAmp: 150, minPass: 120, pts: 9, maxObs: 4 },
-  open: { wMin: 1800, wMax: 2400, hMin: 640, hMax: 800, ceilAmp: 50, floorAmp: 50, minPass: 200, pts: 5, maxObs: 1 },
-  treasury: { wMin: 1200, wMax: 1600, hMin: 560, hMax: 700, ceilAmp: 80, floorAmp: 80, minPass: 180, pts: 6, maxObs: 0 },
-  reactor: { wMin: 1600, wMax: 2000, hMin: 600, hMax: 750, ceilAmp: 60, floorAmp: 60, minPass: 200, pts: 6, maxObs: 1 },
-};
-
-function pickType(rng) {
-  const pool = [
-    { type: 'standard', w: 50 },
-    { type: 'narrow', w: 20 },
-    { type: 'open', w: 15 },
-    { type: 'treasury', w: 10 },
-  ];
-  let r = rng() * pool.reduce((s, e) => s + e.w, 0);
-  for (const e of pool) { r -= e.w; if (r <= 0) return e.type; }
-  return 'standard';
-}
-
-function generateRoom(index, totalRooms, rng) {
-  const isLast = index === totalRooms - 1;
-  const type = isLast ? 'reactor' : pickType(rng);
-  const p = ROOM_PARAMS[type];
-
-  const width = Math.round(lerp(p.wMin, p.wMax, rng()));
-  const height = Math.round(lerp(p.hMin, p.hMax, rng()));
-
-  const tunnelH = Math.round(MIN_TUNNEL_H + rng() * (type === 'narrow' ? 40 : 80));
-  const entranceY = Math.round(height * lerp(0.35, 0.65, rng()));
-  const exitY = Math.round(height * lerp(0.35, 0.65, rng()));
-
-  // Ceiling and floor points — index 0 = left wall, last = right wall
-  const numPts = p.pts + 2; // includes both wall endpoints
-  const maxCeilY = height / 2 - p.minPass / 2;
-  const minFloorY = height / 2 + p.minPass / 2;
-
-  const ceilingPoints = [];
-  const floorPoints = [];
-
-  for (let i = 0; i < numPts; i++) {
-    const t = i / (numPts - 1);
-    const x = Math.round(t * width);
-
-    let cy, fy;
-    if (i === 0) {
-      cy = entranceY - tunnelH / 2;
-      fy = entranceY + tunnelH / 2;
-    } else if (i === numPts - 1) {
-      cy = exitY - tunnelH / 2;
-      fy = exitY + tunnelH / 2;
-    } else {
-      cy = Math.round(20 + rng() * Math.min(p.ceilAmp, maxCeilY - 20));
-      fy = Math.round(minFloorY + rng() * Math.min(p.floorAmp, height - minFloorY - 20));
-      // Enforce minimum passage
-      if (fy - cy < p.minPass) {
-        const mid = (cy + fy) / 2;
-        cy = Math.round(mid - p.minPass / 2);
-        fy = Math.round(mid + p.minPass / 2);
-      }
-    }
-    ceilingPoints.push({ x, y: Math.round(cy) });
-    floorPoints.push({ x, y: Math.round(fy) });
-  }
-
-  // Obstacles (stalactites / stalagmites)
-  const obstacles = [];
-  const numObs = Math.floor(rng() * (p.maxObs + 1));
-  for (let i = 0; i < numObs; i++) {
-    const isStalactite = rng() < 0.5;
-    const ox = Math.round(width * lerp(0.2, 0.8, rng()));
-    const ow = Math.round(20 + rng() * 40);
-    const passage = interpolateWall(floorPoints, ox) - interpolateWall(ceilingPoints, ox);
-    const maxLen = Math.floor(passage * 0.35);
-    const ol = Math.round(lerp(20, Math.max(21, maxLen), rng()));
-
-    if (isStalactite) {
-      obstacles.push({ kind: 'stalactite', x: ox, baseY: interpolateWall(ceilingPoints, ox) - 25, w: ow, len: ol });
-    } else {
-      obstacles.push({ kind: 'stalagmite', x: ox, baseY: interpolateWall(floorPoints, ox) + 25, w: ow, len: ol });
-    }
-  }
-
-  const bgColor = BG_COLORS[Math.floor(rng() * BG_COLORS.length)];
-
-  const room = { type, width, height, bgColor, ceilingPoints, floorPoints, obstacles, entranceY, exitY, tunnelH };
-  spawnEnemiesForRoom(room, rng);
-  return room;
-}
-
-function generateLevel(seed) {
-  const rng = makePRNG(seed);
-  const totalRooms = ROOM_COUNT_MIN + Math.floor(rng() * (ROOM_COUNT_MAX - ROOM_COUNT_MIN + 1));
-  return Array.from({ length: totalRooms }, (_, i) => generateRoom(i, totalRooms, rng));
-}
-
 // ─── Update-Logik pro Zustand ─────────────────────────────────────────────────
 
 function updateMenu() {
   if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
     game.seed = Date.now();
-    game.rooms = generateLevel(game.seed);
+    game.rooms = generateLevel(game.seed, spawnEnemiesForRoom);
     game.currentRoomIndex = 0;
     game.camX = 0;
     game.camY = 0;
@@ -832,13 +36,13 @@ function updateMenu() {
     particles.length = 0;
     enemyProjectiles.length = 0;
     missiles.length = 0;
-    resetShip();
+    resetShip(game.rooms[0]);
     game.setState(State.PLAYING);
   }
 }
 
 function updatePlaying(dt) {
-  if (input.isHeld('ArrowLeft')) ship.angle -= SHIP_ROTATION_SPEED * dt;
+  if (input.isHeld('ArrowLeft'))  ship.angle -= SHIP_ROTATION_SPEED * dt;
   if (input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
 
   if (input.isHeld('ArrowUp')) {
@@ -853,12 +57,11 @@ function updatePlaying(dt) {
   const d = Math.pow(SHIP_DAMPING, dt * 60);
   ship.vx *= d;
   ship.vy *= d;
-
   ship.x += ship.vx * dt;
   ship.y += ship.vy * dt;
 
   if (ship.invincibleTimer > 0) ship.invincibleTimer -= dt;
-  if (ship.fireCooldown > 0) ship.fireCooldown -= dt;
+  if (ship.fireCooldown > 0)    ship.fireCooldown -= dt;
 
   if (input.isHeld('Space')) shoot();
 
@@ -896,13 +99,13 @@ function updatePlaying(dt) {
       ship.x = prevRoom.width - SHIP_RADIUS - 1;
       ship.y = prevRoom.exitY;
       game.camX = Math.max(0, prevRoom.width - CANVAS_WIDTH);
+      game.camY = 0;
       enemyProjectiles.length = 0;
       missiles.length = 0;
-      game.camY = 0;
     }
   }
 
-  // Camera
+  // Kamera
   if (room) {
     game.camX = Math.max(0, Math.min(ship.x - CANVAS_WIDTH / 2, Math.max(0, room.width - CANVAS_WIDTH)));
     game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, room.height - CANVAS_HEIGHT)));
@@ -922,11 +125,11 @@ function updateWin() {
 }
 
 const stateUpdaters = {
-  [State.MENU]: updateMenu,
+  [State.MENU]:    updateMenu,
   [State.PLAYING]: updatePlaying,
-  [State.DEAD]: updateDead,
-  [State.ESCAPE]: updateEscape,
-  [State.WIN]: updateWin,
+  [State.DEAD]:    updateDead,
+  [State.ESCAPE]:  updateEscape,
+  [State.WIN]:     updateWin,
 };
 
 // ─── Render-Hilfsfunktionen ───────────────────────────────────────────────────
@@ -938,7 +141,6 @@ function drawRoom(ctx, room) {
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 5;
 
-  // Ceiling polygon: top strip down to the ceiling line
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(room.width, 0);
@@ -948,7 +150,6 @@ function drawRoom(ctx, room) {
   ctx.closePath();
   ctx.fill();
 
-  // Floor polygon: bottom strip up to the floor line
   ctx.beginPath();
   ctx.moveTo(0, room.height);
   ctx.lineTo(room.width, room.height);
@@ -958,7 +159,6 @@ function drawRoom(ctx, room) {
   ctx.closePath();
   ctx.fill();
 
-  // Obstacles
   for (const obs of room.obstacles) {
     ctx.beginPath();
     if (obs.kind === 'stalactite') {
@@ -980,34 +180,8 @@ function drawRoom(ctx, room) {
   ctx.shadowOffsetY = 0;
 }
 
-function drawProjectiles(ctx) {
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2;
-  ctx.lineCap = 'round';
-  for (const p of projectiles) {
-    const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-    const nx = p.vx / spd;
-    const ny = p.vy / spd;
-    ctx.beginPath();
-    ctx.moveTo(p.x - nx * PROJECTILE_LENGTH / 2, p.y - ny * PROJECTILE_LENGTH / 2);
-    ctx.lineTo(p.x + nx * PROJECTILE_LENGTH / 2, p.y + ny * PROJECTILE_LENGTH / 2);
-    ctx.stroke();
-  }
-}
-
-function drawParticles(ctx) {
-  for (const p of particles) {
-    ctx.globalAlpha = p.life / (p.maxLife ?? PARTICLE_LIFETIME);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-}
-
 function drawHUD(ctx) {
-  const BAR_W = 25;
+  const BAR_W = 50;
   const BAR_H = 5;
   const GAP = 3;
   const MARGIN = 8;
@@ -1015,7 +189,7 @@ function drawHUD(ctx) {
   const bars = [
     { value: resources.energy, color: '#4488ff' },
     { value: resources.shield, color: '#44ff88' },
-    { value: resources.ammo, color: '#ffdd44' },
+    { value: resources.ammo,   color: '#ffdd44' },
   ];
 
   bars.forEach((bar, i) => {
@@ -1028,38 +202,15 @@ function drawHUD(ctx) {
   });
 }
 
-function drawShip(ctx) {
-  if (ship.invincibleTimer > 0 && Math.floor(ship.invincibleTimer / 0.08) % 2 === 0) return;
-
-  ctx.save();
-  ctx.translate(ship.x, ship.y);
-  ctx.rotate(ship.angle);
-
-  ctx.beginPath();
-  ctx.moveTo(16, 0);
-  ctx.lineTo(-11, 13);
-  ctx.lineTo(-11, -13);
-  ctx.closePath();
-
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 6;
-  ctx.lineJoin = 'miter';
-  ctx.stroke();
-
-  ctx.restore();
-}
-
 // ─── Render-Logik pro Zustand ─────────────────────────────────────────────────
 
 function renderMenu(ctx) {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('FORT AKOPALUEZE', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
-
   ctx.font = '16px "Michroma", sans-serif';
   ctx.fillText('ENTER oder LEERTASTE zum Starten', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
@@ -1068,11 +219,9 @@ function renderPlaying(ctx) {
   const room = game.rooms[game.currentRoomIndex];
   if (!room) return;
 
-  // Background (screen space — fills visible area with room color)
   ctx.fillStyle = room.bgColor;
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // World space
   ctx.save();
   ctx.translate(-game.camX, -game.camY);
   drawRoom(ctx, room);
@@ -1084,19 +233,16 @@ function renderPlaying(ctx) {
   drawShip(ctx);
   ctx.restore();
 
-  // HUD overlay (screen space)
   drawHUD(ctx);
 }
 
 function renderDead(ctx) {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
-
   ctx.font = '18px "Michroma", sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
@@ -1104,25 +250,28 @@ function renderDead(ctx) {
 function renderWin(ctx) {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('ENTKOMMEN!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
-
   ctx.font = '18px "Michroma", sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 const stateRenderers = {
-  [State.MENU]: renderMenu,
+  [State.MENU]:    renderMenu,
   [State.PLAYING]: renderPlaying,
-  [State.DEAD]: renderDead,
-  [State.ESCAPE]: renderPlaying,
-  [State.WIN]: renderWin,
+  [State.DEAD]:    renderDead,
+  [State.ESCAPE]:  renderPlaying,
+  [State.WIN]:     renderWin,
 };
 
 // ─── Game Loop ────────────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CANVAS_WIDTH;
+canvas.height = CANVAS_HEIGHT;
 
 function loop(timestamp) {
   const deltaTime = (timestamp - game.previousTime) / 1000;
@@ -1135,14 +284,6 @@ function loop(timestamp) {
   input.clearFrameState();
   requestAnimationFrame(loop);
 }
-
-// ─── Start ────────────────────────────────────────────────────────────────────
-
-const canvas = document.getElementById('game-canvas');
-const ctx = canvas.getContext('2d');
-
-canvas.width = CANVAS_WIDTH;
-canvas.height = CANVAS_HEIGHT;
 
 requestAnimationFrame((timestamp) => {
   game.previousTime = timestamp;
