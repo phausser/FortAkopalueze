@@ -163,7 +163,21 @@ const TURRET_FIRE_RATE = 2.0;  // s zwischen Schüssen
 const TURRET_ROT_SPEED = 2.0;  // rad/s
 const TURRET_RANGE = 380;  // px – Sichtweite
 
+const MISSILE_SPEED = 120;         // px/s
+const MISSILE_TURN_SPEED = Math.PI / 60;  // rad/frame @ 60fps
+const MISSILE_SPLASH_RADIUS = 40;  // px
+const MISSILE_SPLASH_DAMAGE = 0.2;
+const MISSILE_EXPLODE_TIME = 0.4;  // s
+const MISSILE_TRAIL_INTERVAL = 1 / 30; // s – Trail-Partikel alle 2 Frames
+
+const LAUNCHER_RADIUS = 10;
+const LAUNCHER_HP = 3;
+const LAUNCHER_ALERT_DIST = 200;  // px – beginnt zu pochen
+const LAUNCHER_FIRE_DIST = 150;    // px – feuert Rakete
+const LAUNCHER_COOLDOWN = 10;     // s – Pause nach Abschuss
+
 const enemyProjectiles = [];
+const missiles = [];
 
 function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
   const d1x = bx - ax, d1y = by - ay;
@@ -198,7 +212,27 @@ function spawnEnemiesForRoom(room, rng) {
 
   const count = 1 + Math.floor(rng() * 3);
   for (let i = 0; i < count; i++) {
-    if (rng() < 0.45) {
+    const roll = rng();
+    if (roll < 0.2) {
+      // Launcher
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const x = room.width * lerp(0.2, 0.8, rng());
+        const ceilY = interpolateWall(room.ceilingPoints, x);
+        const floorY = interpolateWall(room.floorPoints, x);
+        if (floorY - ceilY < LAUNCHER_RADIUS * 2 + 40) continue;
+        const y = lerp(ceilY + LAUNCHER_RADIUS + 10, floorY - LAUNCHER_RADIUS - 10, rng());
+        room.enemies.push({
+          kind: 'launcher',
+          x, y,
+          hp: LAUNCHER_HP,
+          state: 'idle',      // 'idle' | 'alert' | 'cooldown'
+          cooldownTimer: 0,
+          pulseTimer: 0,
+          dyingTimer: 0,
+        });
+        break;
+      }
+    } else if (roll < 0.55) {
       // Turret
       const x = room.width * lerp(0.15, 0.85, rng());
       const onFloor = rng() < 0.5;
@@ -217,7 +251,7 @@ function spawnEnemiesForRoom(room, rng) {
         dyingTimer: 0,
       });
     } else {
-      // Hubschrauber
+      // Helicopter
       for (let attempt = 0; attempt < 12; attempt++) {
         const x = room.width * lerp(0.2, 0.8, rng());
         const ceilY = interpolateWall(room.ceilingPoints, x);
@@ -258,6 +292,8 @@ function updateEnemies(room, dt) {
 
     if (e.kind === 'turret') {
       updateTurret(e, room, dt);
+    } else if (e.kind === 'launcher') {
+      updateLauncher(e, dt);
     } else {
       updateHelicopter(e, room, dt);
     }
@@ -295,6 +331,29 @@ function updateHelicopter(e, room, dt) {
   if (dist < SHIP_RADIUS + ENEMY_HALF) applyDamage(ENEMY_DMG);
 }
 
+function updateLauncher(e, dt) {
+  e.pulseTimer += dt;
+
+  if (e.state === 'cooldown') {
+    e.cooldownTimer -= dt;
+    if (e.cooldownTimer <= 0) e.state = 'idle';
+    return;
+  }
+
+  const dx = ship.x - e.x, dy = ship.y - e.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < LAUNCHER_FIRE_DIST) {
+    spawnMissile(e.x, e.y);
+    e.state = 'cooldown';
+    e.cooldownTimer = LAUNCHER_COOLDOWN;
+  } else if (dist < LAUNCHER_ALERT_DIST) {
+    e.state = 'alert';
+  } else {
+    e.state = 'idle';
+  }
+}
+
 function updateTurret(e, room, dt) {
   const dx = ship.x - e.x;
   const dy = ship.y - e.y;
@@ -329,6 +388,111 @@ function updateTurret(e, room, dt) {
         vy: Math.sin(e.angle) * ENEMY_PROJ_SPEED,
       });
     }
+  }
+}
+
+function spawnMissile(x, y) {
+  const angle = Math.atan2(ship.y - y, ship.x - x);
+  missiles.push({
+    x, y,
+    angle,
+    vx: Math.cos(angle) * MISSILE_SPEED,
+    vy: Math.sin(angle) * MISSILE_SPEED,
+    state: 'homing',
+    explodeTimer: 0,
+    trailTimer: 0,
+  });
+}
+
+function updateMissiles(room, dt) {
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const m = missiles[i];
+
+    if (m.state === 'exploding') {
+      m.explodeTimer -= dt;
+      if (m.explodeTimer <= 0) missiles.splice(i, 1);
+      continue;
+    }
+
+    // Trail-Partikel
+    m.trailTimer -= dt;
+    if (m.trailTimer <= 0) {
+      m.trailTimer = MISSILE_TRAIL_INTERVAL;
+      for (let t = 0; t < 3; t++) {
+        const spread = (Math.random() - 0.5) * 0.6;
+        const trailAngle = m.angle + Math.PI + spread;
+        particles.push({
+          x: m.x, y: m.y,
+          vx: Math.cos(trailAngle) * 60 * Math.random(),
+          vy: Math.sin(trailAngle) * 60 * Math.random(),
+          life: 0.3,
+          maxLife: 0.3,
+        });
+      }
+    }
+
+    // Kurskorrektur
+    const targetAngle = Math.atan2(ship.y - m.y, ship.x - m.x);
+    let diff = targetAngle - m.angle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const step = MISSILE_TURN_SPEED * dt * 60;
+    m.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
+    m.vx = Math.cos(m.angle) * MISSILE_SPEED;
+    m.vy = Math.sin(m.angle) * MISSILE_SPEED;
+
+    m.x += m.vx * dt;
+    m.y += m.vy * dt;
+
+    // Wand-Kollision
+    let explode = false;
+    if (m.x < 0 || m.x > room.width) {
+      explode = true;
+    } else {
+      const cy = interpolateWall(room.ceilingPoints, m.x);
+      const fy = interpolateWall(room.floorPoints, m.x);
+      if (m.y < cy || m.y > fy) explode = true;
+    }
+
+    // Spieler-Kollision
+    const dx = m.x - ship.x, dy = m.y - ship.y;
+    if (dx * dx + dy * dy < (SHIP_RADIUS + 6) * (SHIP_RADIUS + 6)) {
+      explode = true;
+      applyDamage(MISSILE_SPLASH_DAMAGE);
+    }
+
+    if (explode) {
+      spawnImpactParticles(m.x, m.y);
+      // Extra Explosions-Partikel
+      for (let j = 0; j < 20; j++) {
+        const a = Math.random() * Math.PI * 2;
+        particles.push({ x: m.x, y: m.y, vx: Math.cos(a) * 180 * Math.random(), vy: Math.sin(a) * 180 * Math.random(), life: 0.5, maxLife: 0.5 });
+      }
+      // Splash-Schaden falls noch nicht getroffen
+      const sdx = m.x - ship.x, sdy = m.y - ship.y;
+      if (sdx * sdx + sdy * sdy < MISSILE_SPLASH_RADIUS * MISSILE_SPLASH_RADIUS) {
+        applyDamage(MISSILE_SPLASH_DAMAGE);
+      }
+      m.state = 'exploding';
+      m.explodeTimer = MISSILE_EXPLODE_TIME;
+    }
+  }
+}
+
+function drawMissiles(ctx) {
+  for (const m of missiles) {
+    if (m.state === 'exploding') continue;
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    ctx.rotate(m.angle);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(-2, 4);
+    ctx.lineTo(-2, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -380,6 +544,21 @@ function drawEnemies(ctx, room) {
       ctx.moveTo(e.x, e.y);
       ctx.lineTo(e.x + Math.cos(e.angle) * 20, e.y + Math.sin(e.angle) * 20);
       ctx.stroke();
+    } else if (e.kind === 'launcher') {
+      const pulse = e.state === 'alert'
+        ? LAUNCHER_RADIUS + Math.sin(e.pulseTimer * 8) * 3
+        : LAUNCHER_RADIUS;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, pulse, 0, Math.PI * 2);
+      ctx.fill();
+      // Innerer Ring zeigt Cooldown-Zustand
+      if (e.state === 'cooldown') {
+        ctx.strokeStyle = '#555555';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, pulse - 4, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     } else {
       ctx.fillRect(e.x - ENEMY_HALF, e.y - ENEMY_HALF, S, S);
     }
@@ -460,7 +639,7 @@ function updateProjectiles(room, dt) {
     if (!hit) {
       for (const e of room.enemies) {
         if (e.state === 'dying') continue;
-        const hitRadius = e.kind === 'turret' ? 10 : ENEMY_HALF;
+        const hitRadius = e.kind === 'turret' ? 10 : e.kind === 'launcher' ? LAUNCHER_RADIUS : ENEMY_HALF;
         const edx = p.x - e.x, edy = p.y - e.y;
         if (edx * edx + edy * edy < hitRadius * hitRadius) {
           e.hp--;
@@ -652,6 +831,7 @@ function updateMenu() {
     projectiles.length = 0;
     particles.length = 0;
     enemyProjectiles.length = 0;
+    missiles.length = 0;
     resetShip();
     game.setState(State.PLAYING);
   }
@@ -688,6 +868,7 @@ function updatePlaying(dt) {
     updateEnemies(room, dt);
     updateProjectiles(room, dt);
     updateEnemyProjectiles(room, dt);
+    updateMissiles(room, dt);
   }
   updateParticles(dt);
 
@@ -702,6 +883,7 @@ function updatePlaying(dt) {
       game.camX = 0;
       game.camY = 0;
       enemyProjectiles.length = 0;
+      missiles.length = 0;
     }
   }
 
@@ -715,6 +897,7 @@ function updatePlaying(dt) {
       ship.y = prevRoom.exitY;
       game.camX = Math.max(0, prevRoom.width - CANVAS_WIDTH);
       enemyProjectiles.length = 0;
+      missiles.length = 0;
       game.camY = 0;
     }
   }
@@ -805,7 +988,7 @@ function drawProjectiles(ctx) {
 
 function drawParticles(ctx) {
   for (const p of particles) {
-    ctx.globalAlpha = p.life / PARTICLE_LIFETIME;
+    ctx.globalAlpha = p.life / (p.maxLife ?? PARTICLE_LIFETIME);
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
@@ -886,6 +1069,7 @@ function renderPlaying(ctx) {
   drawRoom(ctx, room);
   drawEnemies(ctx, room);
   drawEnemyProjectiles(ctx);
+  drawMissiles(ctx);
   drawProjectiles(ctx);
   drawParticles(ctx);
   drawShip(ctx);
