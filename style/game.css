@@ -14,7 +14,7 @@ body {
   display: grid;
   place-items: center;
   overflow: hidden;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Michroma', sans-serif;
   color: #ffffff;
 }
 
@@ -28,5 +28,5 @@ body {
 #game-canvas {
   display: block;
   image-rendering: pixelated;
-  border: 1px solid #ffffff;
+  border: 1px solid #222222;
 }

@@ -4,8 +4,8 @@ const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
 
 const SHIP_ROTATION_SPEED = 3.0;
-const SHIP_THRUST         = 250;
-const SHIP_DAMPING        = 0.99;
+const SHIP_THRUST = 250;
+const SHIP_DAMPING = 0.99;
 
 const ROOM_COUNT_MIN = 8;
 const ROOM_COUNT_MAX = 12;
@@ -38,13 +38,13 @@ function resetResources() {
 
 // ─── Schiff ───────────────────────────────────────────────────────────────────
 
-const SHIP_RADIUS      = 12;
-const RESTITUTION      = 0.25;
+const SHIP_RADIUS = 12;
+const RESTITUTION = 0.25;
 const COLLISION_DAMAGE = 0.05;
-const INVINCIBLE_TIME  = 0.5;
+const INVINCIBLE_TIME = 0.5;
 
 const ship = {
-  x: CANVAS_WIDTH  / 2,
+  x: CANVAS_WIDTH / 2,
   y: CANVAS_HEIGHT / 2,
   angle: 0,
   vx: 0,
@@ -54,19 +54,19 @@ const ship = {
 
 function resetShip() {
   const room = game.rooms[0];
-  ship.x               = 100;
-  ship.y               = room ? room.entranceY : CANVAS_HEIGHT / 2;
-  ship.angle           = 0;
-  ship.vx              = 0;
-  ship.vy              = 0;
+  ship.x = 100;
+  ship.y = room ? room.entranceY : CANVAS_HEIGHT / 2;
+  ship.angle = 0;
+  ship.vx = 0;
+  ship.vy = 0;
   ship.invincibleTimer = 0;
   resetResources();
 }
 
 function applyCollisionDamage() {
   if (ship.invincibleTimer > 0) return;
-  resources.energy     -= COLLISION_DAMAGE;
-  ship.invincibleTimer  = INVINCIBLE_TIME;
+  resources.energy -= COLLISION_DAMAGE;
+  ship.invincibleTimer = INVINCIBLE_TIME;
 }
 
 function closestPointOnSegment(px, py, ax, ay, bx, by) {
@@ -78,9 +78,9 @@ function closestPointOnSegment(px, py, ax, ay, bx, by) {
 }
 
 function resolveVsSegment(ax, ay, bx, by) {
-  const cp   = closestPointOnSegment(ship.x, ship.y, ax, ay, bx, by);
-  const dx   = ship.x - cp.x;
-  const dy   = ship.y - cp.y;
+  const cp = closestPointOnSegment(ship.x, ship.y, ax, ay, bx, by);
+  const dx = ship.x - cp.x;
+  const dy = ship.y - cp.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist >= SHIP_RADIUS || dist < 0.0001) return false;
 
@@ -104,8 +104,8 @@ function resolveVsSegment(ax, ay, bx, by) {
 function resolveCollisions(room) {
   const tEntrTop = room.entranceY - room.tunnelH / 2;
   const tEntrBot = room.entranceY + room.tunnelH / 2;
-  const tExitTop = room.exitY     - room.tunnelH / 2;
-  const tExitBot = room.exitY     + room.tunnelH / 2;
+  const tExitTop = room.exitY - room.tunnelH / 2;
+  const tExitBot = room.exitY + room.tunnelH / 2;
 
   // Ceiling segments
   for (let i = 0; i < room.ceilingPoints.length - 1; i++) {
@@ -123,13 +123,13 @@ function resolveCollisions(room) {
 
   // Left wall (zwei Segmente um Tunnel-Öffnung herum)
   if (ship.x - SHIP_RADIUS < 0) {
-    if (resolveVsSegment(0, 0,          0, tEntrTop)) applyCollisionDamage();
-    if (resolveVsSegment(0, tEntrBot,   0, room.height)) applyCollisionDamage();
+    if (resolveVsSegment(0, 0, 0, tEntrTop)) applyCollisionDamage();
+    if (resolveVsSegment(0, tEntrBot, 0, room.height)) applyCollisionDamage();
   }
 
   // Right wall
   if (ship.x + SHIP_RADIUS > room.width) {
-    if (resolveVsSegment(room.width, 0,        room.width, tExitTop)) applyCollisionDamage();
+    if (resolveVsSegment(room.width, 0, room.width, tExitTop)) applyCollisionDamage();
     if (resolveVsSegment(room.width, tExitBot, room.width, room.height)) applyCollisionDamage();
   }
 
@@ -474,11 +474,11 @@ function renderMenu(ctx) {
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 56px Roboto, sans-serif';
+  ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('FORT AKOPALUEZE', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
 
-  ctx.font = '20px Roboto, sans-serif';
+  ctx.font = '16px "Michroma", sans-serif';
   ctx.fillText('ENTER oder LEERTASTE zum Starten', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
@@ -506,11 +506,11 @@ function renderDead(ctx) {
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px Roboto, sans-serif';
+  ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
 
-  ctx.font = '18px Roboto, sans-serif';
+  ctx.font = '18px "Michroma", sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
@@ -519,11 +519,11 @@ function renderWin(ctx) {
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px Roboto, sans-serif';
+  ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('ENTKOMMEN!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
 
-  ctx.font = '18px Roboto, sans-serif';
+  ctx.font = '18px "Michroma", sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
