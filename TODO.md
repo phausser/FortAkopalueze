@@ -2,16 +2,16 @@
 
 ## Phase 1 – Fundament
 
-- [ ] **1. Projektstruktur & Canvas-Grundgerüst**
+- [x] **1. Projektstruktur & Canvas-Grundgerüst**
   HTML-Datei mit Canvas-Element anlegen, Game-Loop (requestAnimationFrame), Input-Handler für Tastatur, grundlegendes State-Management (menu, playing, dead, escape, win).
 
-- [ ] **2. Hubschrauber – Bewegung & Physik**
+- [x] **2. Hubschrauber – Bewegung & Physik**
   Spieler-Entity mit Position, Geschwindigkeit, Trägheit. Thrust nach oben/unten, Drift links/rechts. Gravitation zieht den Heli langsam nach unten. Kollisionsbox. Sprite als geometrische Form (Rechteck + Rotor-Linien).
 
-- [ ] **3. Ressourcen-System (Energie, Munition, Treibstoff)**
+- [x] **3. Ressourcen-System (Energie, Munition, Treibstoff)**
   Drei Ressourcen-Balken: HP (Treffer), Ammo (Schüsse), Fuel (Fliegen). Fuel sinkt kontinuierlich beim Fliegen/Thrusten, Ammo pro Schuss, HP bei Kollision/Treffern. Game-Over wenn eine Ressource auf 0 fällt.
 
-- [ ] **4. HUD – Anzeige der Ressourcen & Spielstatus**
+- [x] **4. HUD – Anzeige der Ressourcen & Spielstatus**
   Minimalistisches HUD am Rand: Energie-/Fuel-/Ammo-Balken als geometrische Segmente. Raumzähler (aktueller Raum / Gesamt). Countdown-Timer (nur aktiv in Escape-Phase). Score.
 
 ## Phase 2 – Welt

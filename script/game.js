@@ -3,9 +3,14 @@
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
 
-const SHIP_ROTATION_SPEED = 3.0;   // rad/s
-const SHIP_THRUST = 250;   // px/s²
-const SHIP_DAMPING = 0.99;  // Geschwindigkeits-Faktor pro Frame @ 60 fps
+const SHIP_ROTATION_SPEED = 3.0;
+const SHIP_THRUST = 250;
+const SHIP_DAMPING = 0.99;
+
+const ROOM_COUNT_MIN = 8;
+const ROOM_COUNT_MAX = 12;
+const MIN_TUNNEL_H = 120;
+const BG_COLORS = ['#3a11111', '#113511', '#3d1111', '#111113a', '#3a3d11'];
 
 // ─── Spielzustände ────────────────────────────────────────────────────────────
 
@@ -22,13 +27,13 @@ const State = {
 const resources = {
   energy: 1.0,
   shield: 1.0,
-  ammo:   1.0,
+  ammo: 1.0,
 };
 
 function resetResources() {
   resources.energy = 1.0;
   resources.shield = 1.0;
-  resources.ammo   = 1.0;
+  resources.ammo = 1.0;
 }
 
 // ─── Schiff ───────────────────────────────────────────────────────────────────
@@ -36,15 +41,16 @@ function resetResources() {
 const ship = {
   x: CANVAS_WIDTH / 2,
   y: CANVAS_HEIGHT / 2,
-  angle: -Math.PI / 2,   // zeigt nach oben
+  angle: 0,
   vx: 0,
   vy: 0,
 };
 
 function resetShip() {
-  ship.x = CANVAS_WIDTH / 2;
-  ship.y = CANVAS_HEIGHT / 2;
-  ship.angle = -Math.PI / 2;
+  const room = game.rooms[0];
+  ship.x = 100;
+  ship.y = room ? room.entranceY : CANVAS_HEIGHT / 2;
+  ship.angle = 0;
   ship.vx = 0;
   ship.vy = 0;
   resetResources();
@@ -55,20 +61,15 @@ function resetShip() {
 const input = {
   held: new Set(),
   justPressed: new Set(),
-
   isHeld(key) { return this.held.has(key); },
   isJustPressed(key) { return this.justPressed.has(key); },
-
   clearFrameState() { this.justPressed.clear(); },
 };
 
 window.addEventListener('keydown', (event) => {
-  if (!input.held.has(event.code)) {
-    input.justPressed.add(event.code);
-  }
+  if (!input.held.has(event.code)) input.justPressed.add(event.code);
   input.held.add(event.code);
 });
-
 window.addEventListener('keyup', (event) => {
   input.held.delete(event.code);
 });
@@ -78,27 +79,150 @@ window.addEventListener('keyup', (event) => {
 const game = {
   state: State.MENU,
   previousTime: 0,
+  rooms: [],
+  currentRoomIndex: 0,
+  camX: 0,
+  camY: 0,
+  seed: 0,
 
-  setState(newState) {
-    this.state = newState;
-  },
+  setState(newState) { this.state = newState; },
 };
+
+// ─── Level-Generierung ────────────────────────────────────────────────────────
+
+function makePRNG(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = Math.imul(s ^ (s >>> 15), s | 1);
+    s ^= s + Math.imul(s ^ (s >>> 7), s | 61);
+    return ((s ^ (s >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function interpolateWall(points, x) {
+  for (let i = 0; i < points.length - 1; i++) {
+    if (x >= points[i].x && x <= points[i + 1].x) {
+      const t = (x - points[i].x) / (points[i + 1].x - points[i].x);
+      return lerp(points[i].y, points[i + 1].y, t);
+    }
+  }
+  return points[points.length - 1].y;
+}
+
+const ROOM_PARAMS = {
+  standard: { wMin: 1400, wMax: 2000, hMin: 580, hMax: 700, ceilAmp: 100, floorAmp: 100, minPass: 150, pts: 7, maxObs: 2 },
+  narrow: { wMin: 1200, wMax: 1600, hMin: 560, hMax: 640, ceilAmp: 150, floorAmp: 150, minPass: 120, pts: 9, maxObs: 4 },
+  open: { wMin: 1800, wMax: 2400, hMin: 640, hMax: 800, ceilAmp: 50, floorAmp: 50, minPass: 200, pts: 5, maxObs: 1 },
+  treasury: { wMin: 1200, wMax: 1600, hMin: 560, hMax: 700, ceilAmp: 80, floorAmp: 80, minPass: 180, pts: 6, maxObs: 0 },
+  reactor: { wMin: 1600, wMax: 2000, hMin: 600, hMax: 750, ceilAmp: 60, floorAmp: 60, minPass: 200, pts: 6, maxObs: 1 },
+};
+
+function pickType(rng) {
+  const pool = [
+    { type: 'standard', w: 50 },
+    { type: 'narrow', w: 20 },
+    { type: 'open', w: 15 },
+    { type: 'treasury', w: 10 },
+  ];
+  let r = rng() * pool.reduce((s, e) => s + e.w, 0);
+  for (const e of pool) { r -= e.w; if (r <= 0) return e.type; }
+  return 'standard';
+}
+
+function generateRoom(index, totalRooms, rng) {
+  const isLast = index === totalRooms - 1;
+  const type = isLast ? 'reactor' : pickType(rng);
+  const p = ROOM_PARAMS[type];
+
+  const width = Math.round(lerp(p.wMin, p.wMax, rng()));
+  const height = Math.round(lerp(p.hMin, p.hMax, rng()));
+
+  const tunnelH = Math.round(MIN_TUNNEL_H + rng() * (type === 'narrow' ? 40 : 80));
+  const entranceY = Math.round(height * lerp(0.35, 0.65, rng()));
+  const exitY = Math.round(height * lerp(0.35, 0.65, rng()));
+
+  // Ceiling and floor points — index 0 = left wall, last = right wall
+  const numPts = p.pts + 2; // includes both wall endpoints
+  const maxCeilY = height / 2 - p.minPass / 2;
+  const minFloorY = height / 2 + p.minPass / 2;
+
+  const ceilingPoints = [];
+  const floorPoints = [];
+
+  for (let i = 0; i < numPts; i++) {
+    const t = i / (numPts - 1);
+    const x = Math.round(t * width);
+
+    let cy, fy;
+    if (i === 0) {
+      cy = entranceY - tunnelH / 2;
+      fy = entranceY + tunnelH / 2;
+    } else if (i === numPts - 1) {
+      cy = exitY - tunnelH / 2;
+      fy = exitY + tunnelH / 2;
+    } else {
+      cy = Math.round(20 + rng() * Math.min(p.ceilAmp, maxCeilY - 20));
+      fy = Math.round(minFloorY + rng() * Math.min(p.floorAmp, height - minFloorY - 20));
+      // Enforce minimum passage
+      if (fy - cy < p.minPass) {
+        const mid = (cy + fy) / 2;
+        cy = Math.round(mid - p.minPass / 2);
+        fy = Math.round(mid + p.minPass / 2);
+      }
+    }
+    ceilingPoints.push({ x, y: Math.round(cy) });
+    floorPoints.push({ x, y: Math.round(fy) });
+  }
+
+  // Obstacles (stalactites / stalagmites)
+  const obstacles = [];
+  const numObs = Math.floor(rng() * (p.maxObs + 1));
+  for (let i = 0; i < numObs; i++) {
+    const isStalactite = rng() < 0.5;
+    const ox = Math.round(width * lerp(0.2, 0.8, rng()));
+    const ow = Math.round(20 + rng() * 40);
+    const passage = interpolateWall(floorPoints, ox) - interpolateWall(ceilingPoints, ox);
+    const maxLen = Math.floor(passage * 0.35);
+    const ol = Math.round(lerp(20, Math.max(21, maxLen), rng()));
+
+    if (isStalactite) {
+      obstacles.push({ kind: 'stalactite', x: ox, baseY: interpolateWall(ceilingPoints, ox) - 25, w: ow, len: ol });
+    } else {
+      obstacles.push({ kind: 'stalagmite', x: ox, baseY: interpolateWall(floorPoints, ox) + 25, w: ow, len: ol });
+    }
+  }
+
+  const bgColor = BG_COLORS[Math.floor(rng() * BG_COLORS.length)];
+
+  return { type, width, height, bgColor, ceilingPoints, floorPoints, obstacles, entranceY, exitY, tunnelH };
+}
+
+function generateLevel(seed) {
+  const rng = makePRNG(seed);
+  const totalRooms = ROOM_COUNT_MIN + Math.floor(rng() * (ROOM_COUNT_MAX - ROOM_COUNT_MIN + 1));
+  return Array.from({ length: totalRooms }, (_, i) => generateRoom(i, totalRooms, rng));
+}
 
 // ─── Update-Logik pro Zustand ─────────────────────────────────────────────────
 
 function updateMenu() {
   if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
+    game.seed = Date.now();
+    game.rooms = generateLevel(game.seed);
+    game.currentRoomIndex = 0;
+    game.camX = 0;
+    game.camY = 0;
     resetShip();
     game.setState(State.PLAYING);
   }
 }
 
 function updatePlaying(dt) {
-  // Rotation
   if (input.isHeld('ArrowLeft')) ship.angle -= SHIP_ROTATION_SPEED * dt;
   if (input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
 
-  // Schub
   if (input.isHeld('ArrowUp')) {
     ship.vx += Math.cos(ship.angle) * SHIP_THRUST * dt;
     ship.vy += Math.sin(ship.angle) * SHIP_THRUST * dt;
@@ -108,35 +232,31 @@ function updatePlaying(dt) {
     ship.vy -= Math.sin(ship.angle) * SHIP_THRUST * dt;
   }
 
-  // Dämpfung (frame-rate-unabhängig)
   const d = Math.pow(SHIP_DAMPING, dt * 60);
   ship.vx *= d;
   ship.vy *= d;
 
-  // Position
   ship.x += ship.vx * dt;
   ship.y += ship.vy * dt;
 
-  // Menü
-  if (input.isJustPressed('Escape')) {
-    game.setState(State.MENU);
+  // Camera
+  const room = game.rooms[game.currentRoomIndex];
+  if (room) {
+    game.camX = Math.max(0, Math.min(ship.x - CANVAS_WIDTH / 2, Math.max(0, room.width - CANVAS_WIDTH)));
+    game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, room.height - CANVAS_HEIGHT)));
   }
+
+  if (input.isJustPressed('Escape')) game.setState(State.MENU);
 }
 
 function updateDead() {
-  if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
-    game.setState(State.MENU);
-  }
+  if (input.isJustPressed('Enter') || input.isJustPressed('Space')) game.setState(State.MENU);
 }
 
-function updateEscape() {
-  // Platzhalter – wird in späteren Phasen befüllt
-}
+function updateEscape() { }
 
 function updateWin() {
-  if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
-    game.setState(State.MENU);
-  }
+  if (input.isJustPressed('Enter') || input.isJustPressed('Space')) game.setState(State.MENU);
 }
 
 const stateUpdaters = {
@@ -149,16 +269,56 @@ const stateUpdaters = {
 
 // ─── Render-Hilfsfunktionen ───────────────────────────────────────────────────
 
+function drawRoom(ctx, room) {
+  ctx.fillStyle = '#000000';
+
+  // Ceiling polygon: top strip down to the ceiling line
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(room.width, 0);
+  for (let i = room.ceilingPoints.length - 1; i >= 0; i--) {
+    ctx.lineTo(room.ceilingPoints[i].x, room.ceilingPoints[i].y);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Floor polygon: bottom strip up to the floor line
+  ctx.beginPath();
+  ctx.moveTo(0, room.height);
+  ctx.lineTo(room.width, room.height);
+  for (let i = room.floorPoints.length - 1; i >= 0; i--) {
+    ctx.lineTo(room.floorPoints[i].x, room.floorPoints[i].y);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Obstacles
+  for (const obs of room.obstacles) {
+    ctx.beginPath();
+    if (obs.kind === 'stalactite') {
+      ctx.moveTo(obs.x - obs.w / 2, obs.baseY);
+      ctx.lineTo(obs.x + obs.w / 2, obs.baseY);
+      ctx.lineTo(obs.x, obs.baseY + obs.len);
+    } else {
+      ctx.moveTo(obs.x - obs.w / 2, obs.baseY);
+      ctx.lineTo(obs.x + obs.w / 2, obs.baseY);
+      ctx.lineTo(obs.x, obs.baseY - obs.len);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 function drawHUD(ctx) {
-  const BAR_W   = 25;
-  const BAR_H   = 5;
-  const GAP     = 3;
-  const MARGIN  = 8;
+  const BAR_W = 25;
+  const BAR_H = 5;
+  const GAP = 3;
+  const MARGIN = 8;
 
   const bars = [
     { value: resources.energy, color: '#4488ff' },
     { value: resources.shield, color: '#44ff88' },
-    { value: resources.ammo,   color: '#ffdd44' },
+    { value: resources.ammo, color: '#ffdd44' },
   ];
 
   bars.forEach((bar, i) => {
@@ -177,9 +337,9 @@ function drawShip(ctx) {
   ctx.rotate(ship.angle);
 
   ctx.beginPath();
-  ctx.moveTo(16, 0);   // Nase – spitze Ecke vorne
-  ctx.lineTo(-11, 13);   // hinten links
-  ctx.lineTo(-11, -13);   // hinten rechts
+  ctx.moveTo(16, 0);
+  ctx.lineTo(-11, 13);
+  ctx.lineTo(-11, -13);
   ctx.closePath();
 
   ctx.strokeStyle = '#ffffff';
@@ -201,16 +361,26 @@ function renderMenu(ctx) {
   ctx.textAlign = 'center';
   ctx.fillText('FORT AKOPALUEZE', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
 
-  ctx.fillStyle = '#ffffff';
   ctx.font = '20px Roboto, sans-serif';
   ctx.fillText('ENTER oder LEERTASTE zum Starten', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 function renderPlaying(ctx) {
-  ctx.fillStyle = '#000000';
+  const room = game.rooms[game.currentRoomIndex];
+  if (!room) return;
+
+  // Background (screen space — fills visible area with room color)
+  ctx.fillStyle = room.bgColor;
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+  // World space
+  ctx.save();
+  ctx.translate(-game.camX, -game.camY);
+  drawRoom(ctx, room);
   drawShip(ctx);
+  ctx.restore();
+
+  // HUD overlay (screen space)
   drawHUD(ctx);
 }
 
@@ -223,7 +393,6 @@ function renderDead(ctx) {
   ctx.textAlign = 'center';
   ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
 
-  ctx.fillStyle = '#ffffff';
   ctx.font = '18px Roboto, sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
@@ -237,7 +406,6 @@ function renderWin(ctx) {
   ctx.textAlign = 'center';
   ctx.fillText('ENTKOMMEN!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
 
-  ctx.fillStyle = '#ffffff';
   ctx.font = '18px Roboto, sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
@@ -246,7 +414,7 @@ const stateRenderers = {
   [State.MENU]: renderMenu,
   [State.PLAYING]: renderPlaying,
   [State.DEAD]: renderDead,
-  [State.ESCAPE]: renderPlaying, // Escape nutzt vorerst denselben Renderer
+  [State.ESCAPE]: renderPlaying,
   [State.WIN]: renderWin,
 };
 
@@ -255,14 +423,12 @@ const stateRenderers = {
 function loop(timestamp) {
   const deltaTime = (timestamp - game.previousTime) / 1000;
   game.previousTime = timestamp;
-
-  const clampedDelta = Math.min(deltaTime, 0.1); // max 100 ms verhindert Sprünge nach Tab-Wechsel
+  const clampedDelta = Math.min(deltaTime, 0.1);
 
   stateUpdaters[game.state]?.(clampedDelta);
   stateRenderers[game.state]?.(ctx);
 
   input.clearFrameState();
-
   requestAnimationFrame(loop);
 }
 
