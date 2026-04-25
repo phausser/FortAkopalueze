@@ -148,17 +148,49 @@ function resolveCollisions(room) {
 
 // ─── Feinde ───────────────────────────────────────────────────────────────────
 
-const ENEMY_HALF        = 7;    // halbe Kantenlänge des Quadrats (14×14)
-const ENEMY_PATROL_SPD  = 80;   // px/s
-const ENEMY_CHASE_SPD   = 150;  // px/s
-const ENEMY_CHASE_DIST  = 400;  // px – Aggro-Radius
-const ENEMY_FLEE_DIST   = 500;  // px – zurück zu Patrol
-const ENEMY_MIN_DIST    = 80;   // px – Mindestabstand beim Chase
-const ENEMY_FIRE_RATE   = 1.5;  // s zwischen Schüssen
-const ENEMY_PROJ_SPEED  = 300;  // px/s
-const ENEMY_DMG         = 0.08; // Energie-Verlust pro Treffer
+const ENEMY_HALF = 7;    // halbe Kantenlänge des Quadrats (14×14)
+const ENEMY_PATROL_SPD = 80;   // px/s
+const ENEMY_CHASE_SPD = 150;  // px/s
+const ENEMY_CHASE_DIST = 400;  // px – Aggro-Radius
+const ENEMY_FLEE_DIST = 500;  // px – zurück zu Patrol
+const ENEMY_MIN_DIST = 80;   // px – Mindestabstand beim Chase
+const ENEMY_FIRE_RATE = 1.5;  // s zwischen Schüssen (Hubschrauber)
+const ENEMY_PROJ_SPEED = 300;  // px/s
+const ENEMY_DMG = 0.08; // Energie-Verlust pro Treffer
+
+const TURRET_HP = 3;
+const TURRET_FIRE_RATE = 2.0;  // s zwischen Schüssen
+const TURRET_ROT_SPEED = 2.0;  // rad/s
+const TURRET_RANGE = 380;  // px – Sichtweite
 
 const enemyProjectiles = [];
+
+function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  const d1x = bx - ax, d1y = by - ay;
+  const d2x = dx - cx, d2y = dy - cy;
+  const cross = d1x * d2y - d1y * d2x;
+  if (Math.abs(cross) < 0.0001) return false;
+  const t = ((cx - ax) * d2y - (cy - ay) * d2x) / cross;
+  const u = ((cx - ax) * d1y - (cy - ay) * d1x) / cross;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+function hasLineOfSight(room, x1, y1, x2, y2) {
+  for (let i = 0; i < room.ceilingPoints.length - 1; i++) {
+    const a = room.ceilingPoints[i], b = room.ceilingPoints[i + 1];
+    if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return false;
+  }
+  for (let i = 0; i < room.floorPoints.length - 1; i++) {
+    const a = room.floorPoints[i], b = room.floorPoints[i + 1];
+    if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return false;
+  }
+  for (const obs of room.obstacles) {
+    const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
+    if (segmentsIntersect(x1, y1, x2, y2, obs.x - obs.w / 2, obs.baseY, obs.x, tipY)) return false;
+    if (segmentsIntersect(x1, y1, x2, y2, obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) return false;
+  }
+  return true;
+}
 
 function spawnEnemiesForRoom(room, rng) {
   room.enemies = [];
@@ -166,29 +198,52 @@ function spawnEnemiesForRoom(room, rng) {
 
   const count = 1 + Math.floor(rng() * 3);
   for (let i = 0; i < count; i++) {
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const x      = room.width  * lerp(0.2, 0.8, rng());
-      const ceilY  = interpolateWall(room.ceilingPoints, x);
-      const floorY = interpolateWall(room.floorPoints,   x);
-      if (floorY - ceilY < ENEMY_HALF * 2 + 40) continue;
-      const y = lerp(ceilY + ENEMY_HALF + 10, floorY - ENEMY_HALF - 10, rng());
+    if (rng() < 0.45) {
+      // Turret
+      const x = room.width * lerp(0.15, 0.85, rng());
+      const onFloor = rng() < 0.5;
+      const wallY = onFloor
+        ? interpolateWall(room.floorPoints, x)
+        : interpolateWall(room.ceilingPoints, x);
       room.enemies.push({
-        x, y,
-        vx:           (rng() < 0.5 ? 1 : -1) * ENEMY_PATROL_SPD,
-        vy:           0,
-        hp:           2,
-        state:        'patrol',
-        fireCooldown: rng() * ENEMY_FIRE_RATE,
+        kind: 'turret',
+        x,
+        y: wallY,
+        mount: onFloor ? 'floor' : 'ceiling',
+        angle: onFloor ? -Math.PI / 2 : Math.PI / 2,
+        hp: TURRET_HP,
+        state: 'idle',
+        fireCooldown: rng() * TURRET_FIRE_RATE,
+        dyingTimer: 0,
       });
-      break;
+    } else {
+      // Hubschrauber
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const x = room.width * lerp(0.2, 0.8, rng());
+        const ceilY = interpolateWall(room.ceilingPoints, x);
+        const floorY = interpolateWall(room.floorPoints, x);
+        if (floorY - ceilY < ENEMY_HALF * 2 + 40) continue;
+        const y = lerp(ceilY + ENEMY_HALF + 10, floorY - ENEMY_HALF - 10, rng());
+        room.enemies.push({
+          kind: 'helicopter',
+          x, y,
+          vx: (rng() < 0.5 ? 1 : -1) * ENEMY_PATROL_SPD,
+          vy: 0,
+          hp: 2,
+          state: 'patrol',
+          fireCooldown: rng() * ENEMY_FIRE_RATE,
+          dyingTimer: 0,
+        });
+        break;
+      }
     }
   }
 }
 
 function applyDamage(amount) {
   if (ship.invincibleTimer > 0) return;
-  resources.energy     -= amount;
-  ship.invincibleTimer  = INVINCIBLE_TIME;
+  resources.energy -= amount;
+  ship.invincibleTimer = INVINCIBLE_TIME;
 }
 
 function updateEnemies(room, dt) {
@@ -201,41 +256,79 @@ function updateEnemies(room, dt) {
       continue;
     }
 
-    const dx   = ship.x - e.x;
-    const dy   = ship.y - e.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    // Zustandswechsel
-    if (e.state === 'patrol' && dist < ENEMY_CHASE_DIST) e.state = 'chase';
-    if (e.state === 'chase'  && dist > ENEMY_FLEE_DIST)  e.state = 'patrol';
-
-    if (e.state === 'patrol') {
-      e.x += e.vx * dt;
-      if (e.x < ENEMY_HALF + 20 || e.x > room.width - ENEMY_HALF - 20) e.vx = -e.vx;
+    if (e.kind === 'turret') {
+      updateTurret(e, room, dt);
     } else {
-      if (dist > ENEMY_MIN_DIST) {
-        e.x += (dx / dist) * ENEMY_CHASE_SPD * dt;
-        e.y += (dy / dist) * ENEMY_CHASE_SPD * dt;
-      }
-      e.fireCooldown -= dt;
-      if (e.fireCooldown <= 0) {
-        e.fireCooldown = ENEMY_FIRE_RATE;
-        const angle = Math.atan2(dy, dx);
-        enemyProjectiles.push({
-          x:  e.x, y:  e.y,
-          vx: Math.cos(angle) * ENEMY_PROJ_SPEED,
-          vy: Math.sin(angle) * ENEMY_PROJ_SPEED,
-        });
-      }
+      updateHelicopter(e, room, dt);
     }
+  }
+}
 
-    // Y in Durchgang halten
-    const ceilY  = interpolateWall(room.ceilingPoints, Math.max(0, Math.min(room.width, e.x)));
-    const floorY = interpolateWall(room.floorPoints,   Math.max(0, Math.min(room.width, e.x)));
-    e.y = Math.max(ceilY + ENEMY_HALF + 2, Math.min(floorY - ENEMY_HALF - 2, e.y));
+function updateHelicopter(e, room, dt) {
+  const dx = ship.x - e.x;
+  const dy = ship.y - e.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // Körperkontakt Spieler
-    if (dist < SHIP_RADIUS + ENEMY_HALF) applyDamage(ENEMY_DMG);
+  if (e.state === 'patrol' && dist < ENEMY_CHASE_DIST) e.state = 'chase';
+  if (e.state === 'chase' && dist > ENEMY_FLEE_DIST) e.state = 'patrol';
+
+  if (e.state === 'patrol') {
+    e.x += e.vx * dt;
+    if (e.x < ENEMY_HALF + 20 || e.x > room.width - ENEMY_HALF - 20) e.vx = -e.vx;
+  } else {
+    if (dist > ENEMY_MIN_DIST) {
+      e.x += (dx / dist) * ENEMY_CHASE_SPD * dt;
+      e.y += (dy / dist) * ENEMY_CHASE_SPD * dt;
+    }
+    e.fireCooldown -= dt;
+    if (e.fireCooldown <= 0) {
+      e.fireCooldown = ENEMY_FIRE_RATE;
+      const angle = Math.atan2(dy, dx);
+      enemyProjectiles.push({ x: e.x, y: e.y, vx: Math.cos(angle) * ENEMY_PROJ_SPEED, vy: Math.sin(angle) * ENEMY_PROJ_SPEED });
+    }
+  }
+
+  const cx = Math.max(0, Math.min(room.width, e.x));
+  e.y = Math.max(interpolateWall(room.ceilingPoints, cx) + ENEMY_HALF + 2,
+    Math.min(interpolateWall(room.floorPoints, cx) - ENEMY_HALF - 2, e.y));
+
+  if (dist < SHIP_RADIUS + ENEMY_HALF) applyDamage(ENEMY_DMG);
+}
+
+function updateTurret(e, room, dt) {
+  const dx = ship.x - e.x;
+  const dy = ship.y - e.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist > TURRET_RANGE) { e.state = 'idle'; return; }
+
+  e.state = 'tracking';
+
+  // Lauf dreht sich zum Spieler
+  const targetAngle = Math.atan2(dy, dx);
+  let diff = targetAngle - e.angle;
+  // Kürzester Winkelweg
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  const step = TURRET_ROT_SPEED * dt;
+  e.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
+
+  // Lauf auf Cave-Seite beschränken
+  if (e.mount === 'floor') e.angle = Math.max(-Math.PI, Math.min(0, e.angle));
+  if (e.mount === 'ceiling') e.angle = Math.max(0, Math.min(Math.PI, e.angle));
+
+  // Schießen mit Sichtlinie
+  e.fireCooldown -= dt;
+  if (e.fireCooldown <= 0) {
+    e.fireCooldown = TURRET_FIRE_RATE;
+    const offsetY = e.mount === 'floor' ? -4 : 4;
+    if (hasLineOfSight(room, e.x, e.y + offsetY, ship.x, ship.y)) {
+      enemyProjectiles.push({
+        x: e.x, y: e.y,
+        vx: Math.cos(e.angle) * ENEMY_PROJ_SPEED,
+        vy: Math.sin(e.angle) * ENEMY_PROJ_SPEED,
+      });
+    }
   }
 }
 
@@ -248,7 +341,7 @@ function updateEnemyProjectiles(room, dt) {
     let hit = p.x < 0 || p.x > room.width;
     if (!hit) {
       const cy = interpolateWall(room.ceilingPoints, p.x);
-      const fy = interpolateWall(room.floorPoints,   p.x);
+      const fy = interpolateWall(room.floorPoints, p.x);
       if (p.y < cy || p.y > fy) hit = true;
     }
 
@@ -273,14 +366,30 @@ function drawEnemies(ctx, room) {
   for (const e of room.enemies) {
     if (e.state === 'dying' && Math.floor(e.dyingTimer * 14) % 2 === 0) continue;
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(e.x - ENEMY_HALF, e.y - ENEMY_HALF, S, S);
+    ctx.strokeStyle = '#ffffff';
+
+    if (e.kind === 'turret') {
+      // Kugel (Basis)
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      // Rohr
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(e.x, e.y);
+      ctx.lineTo(e.x + Math.cos(e.angle) * 20, e.y + Math.sin(e.angle) * 20);
+      ctx.stroke();
+    } else {
+      ctx.fillRect(e.x - ENEMY_HALF, e.y - ENEMY_HALF, S, S);
+    }
   }
 }
 
 function drawEnemyProjectiles(ctx) {
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth   = 1.5;
-  ctx.lineCap     = 'round';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
   for (const p of enemyProjectiles) {
     const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
     const nx = p.vx / spd, ny = p.vy / spd;
@@ -351,7 +460,9 @@ function updateProjectiles(room, dt) {
     if (!hit) {
       for (const e of room.enemies) {
         if (e.state === 'dying') continue;
-        if (Math.abs(p.x - e.x) < ENEMY_HALF && Math.abs(p.y - e.y) < ENEMY_HALF) {
+        const hitRadius = e.kind === 'turret' ? 10 : ENEMY_HALF;
+        const edx = p.x - e.x, edy = p.y - e.y;
+        if (edx * edx + edy * edy < hitRadius * hitRadius) {
           e.hp--;
           if (e.hp <= 0) { e.state = 'dying'; e.dyingTimer = 0.5; }
           spawnImpactParticles(p.x, p.y);
@@ -538,8 +649,8 @@ function updateMenu() {
     game.currentRoomIndex = 0;
     game.camX = 0;
     game.camY = 0;
-    projectiles.length      = 0;
-    particles.length        = 0;
+    projectiles.length = 0;
+    particles.length = 0;
     enemyProjectiles.length = 0;
     resetShip();
     game.setState(State.PLAYING);
