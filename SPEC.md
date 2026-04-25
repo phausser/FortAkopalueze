@@ -12,7 +12,7 @@ Ein Single-Player-Arcade-Shooter im Stil von *Fort Apocalypse* (C64, 1982). Der 
 |---|---|
 | Technologie | HTML5 Canvas 2D, Vanilla JS (ES2022), Web Audio API |
 | Dateien | `index.html`, `game.js`, `style.css` (single-file-Option möglich) |
-| Auflösung | 800 × 600 px (skaliert per CSS auf Viewport) |
+| Auflösung | 960 × 540 px (skaliert per CSS auf Viewport) |
 | Ziel-FPS | 60 |
 | Persistenz | LocalStorage (Highscores) |
 | Abhängigkeiten | keine externen Bibliotheken |
@@ -43,28 +43,29 @@ MENU → PLAYING → ESCAPE → WIN
 
 | Taste | Aktion |
 |---|---|
-| `W` / `↑` | Schub aufwärts |
-| `S` / `↓` | Schub abwärts |
-| `A` / `←` | Schub links |
-| `D` / `→` | Schub rechts |
-| `Space` | Schießen (Richtung: aktuell vorwärts) |
-| `P` | Pause |
+| `←` / `→` | Schiff rotieren |
+| `↑` | Schub in Blickrichtung |
+| `↓` | Schub entgegen Blickrichtung |
+| `Space` | Schießen (Richtung: Schiffspitze) |
+| `ESC` | Zurück ins Menü |
 
 ### Physik
 
-- Trägheitsmodell: Schub addiert Beschleunigung, Geschwindigkeit wird pro Frame mit Dämpfungsfaktor multipliziert (`0.92`).
-- Gravitation: konstante Abwärtsbeschleunigung (`0.08 px/frame²`).
-- Maximale Geschwindigkeit: `±6 px/frame` horizontal, `±8 px/frame` vertikal.
+- Trägheitsmodell: Schub addiert Beschleunigung, Geschwindigkeit wird dt-basiert mit Dämpfungsfaktor gedämpft (`SHIP_DAMPING = 0.99` pro Frame @ 60 fps).
+- Keine Gravitation (aktuell).
+- Kollisionsradius: `12 px` (Kreis). Wandkollision mit Segment-Normalen-Reflexion, `RESTITUTION = 0.25`.
 
 ### Ressourcen
 
-| Ressource | Startwert | Verlust | Auffüllung |
-|---|---|---|---|
-| **Energie (HP)** | 100 | Kollision mit Wand/Gegner/Projektil | Energie-Pack |
-| **Munition** | 80 | 1 pro Schuss | Munitions-Pack |
-| **Treibstoff** | 100 | 0.05/frame bei Schub | Treibstoff-Kanister |
+Intern als Wert `0.0–1.0` gespeichert. HUD-Balken 25 × 5 px.
 
-Game-Over sobald eine Ressource ≤ 0.
+| Ressource | Farbe | Verlust | Auffüllung |
+|---|---|---|---|
+| **Energie** | Blau | −0.05 pro Wandkontakt (0.5 s Unverwundbarkeit) | Energie-Pack |
+| **Munition** | Gelb | −1/80 pro Schuss | Munitions-Pack |
+| **Schild** | Grün | (noch nicht aktiv) | — |
+
+Game-Over sobald eine Ressource ≤ 0 (noch nicht implementiert).
 
 ---
 
@@ -81,11 +82,20 @@ Game-Over sobald eine Ressource ≤ 0.
 
 Jeder Raum wird aus folgenden Parametern generiert:
 
-- Breite: `1200–2400 px`, Höhe: `400–700 px`
-- Decke: zufällige Polygon-Linie (5–9 Kontrollpunkte, Amplitude `0–120 px`)
-- Boden: zufällige Polygon-Linie (5–9 Kontrollpunkte, Amplitude `0–120 px`)
-- Mindest-Durchgangshöhe im Tunnel: `120 px`
-- Optionale Hindernisse: hängende Stalaktiten, aufragende Stalagmiten (Dreiecke)
+- Hintergrundfarbe pro Raum: zufällig aus Palette (dunkelrot `#3a1111`, dunkelgrün `#113511`, dunkelviolett `#3d1111`, dunkelblau `#11113a`, dunkelbraun `#3a3d11`) — befliegbar
+- Wände (Decke/Boden/Hindernisse): schwarz `#000000`
+- Breite/Höhe je nach Typ (siehe Tabelle), Höhe immer ≥ 560 px
+- Decke + Boden: Polygon-Linien mit je `pts+2` Punkten (inkl. Wandanker), Amplitude typ-abhängig
+- Mindest-Durchgangshöhe: typ-abhängig (120–200 px)
+- Hindernisse: Stalaktiten (Decke) und Stalagmiten (Boden) als schwarze Dreiecke, Basis 3 px in Wand versenkt
+
+| Typ | Breite | Höhe | Ceil-Amp | Min-Passage | Hindernisse |
+|---|---|---|---|---|---|
+| standard | 1400–2000 | 580–700 | 100 px | 150 px | 0–2 |
+| narrow | 1200–1600 | 560–640 | 150 px | 120 px | 0–4 |
+| open | 1800–2400 | 640–800 | 50 px | 200 px | 0–1 |
+| treasury | 1200–1600 | 560–700 | 80 px | 180 px | 0 |
+| reactor | 1600–2000 | 600–750 | 60 px | 200 px | 0–1 |
 
 ### Raum-Typen (Gewichtung beim Zufalls-Pick)
 
@@ -173,31 +183,31 @@ Erscheinen zufällig in Räumen (0–2 pro Raum). Blinken mit `0.5 Hz`. Aufsamme
 
 ## Kamera & Scrolling
 
-- Jeder Raum hat ein eigenes Koordinatensystem.
-- Kamera zentriert auf Spieler, geclampt an Raumgrenzen.
-- Raumwechsel: 0.4 s Fade-to-Black, dann Fade-in im neuen Raum.
-- Mini-Map optional (zeigt besuchte Räume als graue Rechtecke, aktueller Raum hervorgehoben).
+- Jeder Raum hat ein eigenes Koordinatensystem (Weltkoordinaten).
+- Kamera: `camX = clamp(ship.x − W/2, 0, room.width − W)`, analog Y.
+- Raumwechsel rechts: Schiff betritt nächsten Raum bei `entranceY`. Links: kehrt bei `exitY` zurück.
+- Raumwechsel: sofortiger Schnitt (kein Fade, noch ausstehend).
+- Mini-Map: ausstehend.
 
 ---
 
 ## Partikel-System
 
-Generisches System: jedes Partikel hat `{x, y, vx, vy, life, maxLife, color, size, shape}`.
+Implementiert: `{x, y, vx, vy, life}`. Gezeichnet als Kreis r=1.5 px, `globalAlpha = life / PARTICLE_LIFETIME`.
 
-| Effekt | Partikel-Anzahl | Shape | Farbe |
-|---|---|---|---|
-| Kleine Explosion | 12 | Kreis | Orange → Rot |
-| Große Explosion (Reaktor) | 60 | Kreis + Linie | Weiß → Orange → Rot |
-| Projektil-Treffer | 6 | Kreis | Weiß |
-| Raketen-Trail | 3/frame | Kreis (klein) | Gelb → Transparent |
-| Heli-Rauch (bei niedrigem HP) | 1/frame | Kreis | Grau |
-| Mündungsfeuer | 4 | Linie | Weiß-Gelb |
+| Effekt | Partikel-Anzahl | Geschwindigkeit | Lifetime | Status |
+|---|---|---|---|---|
+| Projektil-Treffer | 12 | 120 px/s, Zufallsrichtung | 0.42 s | ✅ |
+| Kleine Explosion | 12–60 | — | — | ausstehend |
+| Raketen-Trail | 3/frame | — | — | ausstehend |
+| Heli-Rauch | 1/frame | — | — | ausstehend |
+| Mündungsfeuer | 4 | — | — | ausstehend |
 
 ---
 
 ## Visueller Stil
 
-- **Palette:** Hintergrund `#0a0a0f`, Wände `#1a1a2e`/`#16213e`, Akzente Cyan/Orange/Rot/Grün.
+- **Palette:** Hintergrund pro Raum dunkel (rot/grün/violett/blau/braun), Wände schwarz `#000000`, Schiff weiß `#ffffff`.
 - **Glow:** `ctx.shadowBlur` für Projektile, Laser, Extras, Reaktor.
 - **Scan-Line-Overlay:** optionaler halbtransparenter CSS-Gradient über Canvas für CRT-Effekt.
 - **Flickering:** Raumbeleuchtung flackert leicht (zufällige `globalAlpha`-Variation `±0.05`).

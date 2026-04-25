@@ -30,12 +30,12 @@ Alle Agents implementieren folgende Basis-Felder und Methoden:
 
 | Feld | Wert |
 |---|---|
-| Sprite | Rechteck 32×14 px + Rotor-Linie 40 px + Heck-Rotor |
-| Farbe | Cyan `#00ffee` |
-| HP | 0–100 |
-| Ammo | 0–120 |
-| Fuel | 0–100 |
-| Kollisionsbox | 28×12 px (etwas kleiner als Sprite) |
+| Sprite | Delta-Dreieck (Outline), Spitze vorne, 2 Punkte hinten — weiß `#ffffff`, `lineWidth 6` |
+| Farbe | Weiß `#ffffff` |
+| Energie | 0.0–1.0 (intern); Verlust 0.05 pro Wandkontakt |
+| Munition | 0.0–1.0 (80 Schüsse = voll) |
+| Schild | 0.0–1.0 (noch nicht aktiv) |
+| Kollisionsradius | 12 px (Kreis) |
 
 ### Zustandsmaschine
 
@@ -50,11 +50,11 @@ DYING ──animation done──→ [State: DEAD]
 
 ### Verhalten
 
-- **Bewegung:** Schub-Tasten addieren Beschleunigung. Gravitation zieht konstant nach unten. Geschwindigkeit wird mit Dämpfungsfaktor multipliziert (Trägheit).
-- **Schießen:** Feuert Projectile in Flugrichtung. Kostet 1 Ammo. Feuerrate: max 1 Schuss pro 0.2 s.
-- **Fuel-Verbrauch:** Nur bei aktivem Schub. Im freien Fall kein Verbrauch.
-- **Kollisionsreaktion:** Bei Wandkontakt: Bounce (Geschwindigkeit invertiert × 0.3), HP-Abzug (5), kurzes Unverwundbarkeits-Fenster (0.5 s, Sprite blinkt).
-- **Rauch-Effekt:** Bei HP < 30 wird pro Frame ein Rauch-Partikel emittiert.
+- **Bewegung:** `←`/`→` rotiert das Schiff, `↑`/`↓` addiert Schub in/gegen Blickrichtung. Geschwindigkeit wird dt-basiert gedämpft (`SHIP_DAMPING = 0.99`). Keine Gravitation.
+- **Schießen:** `Space` feuert Projektil aus der Schiffspitze in Blickrichtung. Feuerrate: 5/s (`FIRE_COOLDOWN = 0.2 s`). Kostet 1/80 Munition.
+- **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Energie −0.05 pro Treffer, 0.5 s Unverwundbarkeit (Schiff blinkt).
+- **Fuel-Verbrauch:** noch nicht implementiert.
+- **Rauch-Effekt:** noch nicht implementiert.
 
 ### Interaktionen
 
@@ -288,16 +288,17 @@ Wird von Spieler, Feind-Hubschrauber und Wandgeschütz verwendet.
 
 | Feld | Wert |
 |---|---|
-| Sprite | Rechteck 8×3 px, Glow |
-| Geschwindigkeit | Spieler: `10 px/frame` / Feind: `6 px/frame` |
-| Reichweite | max 600 px (dann `alive = false`) |
-| Schaden | Spieler-Proj.: 1 HP / Feind-Proj.: 10 HP |
+| Sprite | Linie 8 px lang, `lineWidth 2`, weiß, `lineCap round` |
+| Geschwindigkeit | Spieler: `600 px/s` / Feind: (ausstehend) |
+| Reichweite | kein Limit — verschwindet bei Wand-/Hinderniskollision |
+| Schaden | gegen Feinde: ausstehend |
 
 ### Verhalten
 
-- Fliegt in konstanter Richtung (kein Homing).
-- Verschwindet bei Wandkollision (keine Durchdringung).
-- Mündungsfeuer-Partikel beim Spawn.
+- Fliegt in konstanter Richtung in Blickrichtung des Schiffs.
+- Kollision: Decke/Boden via `interpolateWall`, Hindernisse via `pointInTriangle`.
+- Bei Treffer: 12 Partikel in Zufallsrichtungen, Fade-out über 0.42 s.
+- Mündungsfeuer-Partikel: ausstehend.
 
 ---
 

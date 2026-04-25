@@ -16,16 +16,16 @@
 
 ## Phase 2 – Welt
 
-- [ ] **5. Prozeduraler Höhlen-/Raumgenerator**
+- [x] **5. Prozeduraler Höhlen-/Raumgenerator**
   Jeder Raum ist ein Rechteck mit zufälligen Fels-Vorsprüngen (Polygone oben/unten). Eingang links, Ausgang rechts (oder oben/unten für Varianten). Übergänge zwischen Räumen als schmale Tunnel. Seed-basiert, damit Level reproduzierbar sind. 8–12 Räume pro Durchgang, letzter Raum enthält Reaktor.
 
-- [ ] **6. Kollisionserkennung mit Höhlenwänden**
+- [x] **6. Kollisionserkennung mit Höhlenwänden**
   AABB- oder Polygon-Kollision zwischen Heli und Raum-Geometrie. Bei Kollision: HP-Abzug, kurzer Knockback. Wände dürfen nicht durchdrungen werden (Sliding-Kollision).
 
-- [ ] **7. Schuss-System des Spielers**
+- [x] **7. Schuss-System des Spielers**
   Spieler feuert Projektile nach rechts (primär) und optional nach links/oben. Projektil als kleines Rechteck mit Leuchteffekt. Verbraucht Munition. Projektile verschwinden bei Wandkollision oder nach maximaler Reichweite.
 
-- [ ] **16. Kamera & Scrolling**
+- [x] **16. Kamera & Scrolling**
   Kamera folgt dem Heli innerhalb eines Raums (oder Raum ist komplett sichtbar bei kleiner Größe). Beim Raumwechsel: kurze Übergangsanimation (Fade oder Slide). Raum-Koordinatensystem unabhängig von Canvas-Größe.
 
 ## Phase 3 – Feinde
