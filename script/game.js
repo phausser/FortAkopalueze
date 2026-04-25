@@ -1,38 +1,53 @@
 // ─── Konfiguration ────────────────────────────────────────────────────────────
 
-const CANVAS_WIDTH  = 960;
+const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
 
 const SHIP_ROTATION_SPEED = 3.0;   // rad/s
-const SHIP_THRUST         = 250;   // px/s²
-const SHIP_DAMPING        = 0.99;  // Geschwindigkeits-Faktor pro Frame @ 60 fps
+const SHIP_THRUST = 250;   // px/s²
+const SHIP_DAMPING = 0.99;  // Geschwindigkeits-Faktor pro Frame @ 60 fps
 
 // ─── Spielzustände ────────────────────────────────────────────────────────────
 
 const State = {
-  MENU:    'menu',
+  MENU: 'menu',
   PLAYING: 'playing',
-  DEAD:    'dead',
-  ESCAPE:  'escape',
-  WIN:     'win',
+  DEAD: 'dead',
+  ESCAPE: 'escape',
+  WIN: 'win',
 };
+
+// ─── Ressourcen ───────────────────────────────────────────────────────────────
+
+const resources = {
+  energy: 1.0,
+  shield: 1.0,
+  ammo:   1.0,
+};
+
+function resetResources() {
+  resources.energy = 1.0;
+  resources.shield = 1.0;
+  resources.ammo   = 1.0;
+}
 
 // ─── Schiff ───────────────────────────────────────────────────────────────────
 
 const ship = {
-  x:     CANVAS_WIDTH  / 2,
-  y:     CANVAS_HEIGHT / 2,
+  x: CANVAS_WIDTH / 2,
+  y: CANVAS_HEIGHT / 2,
   angle: -Math.PI / 2,   // zeigt nach oben
-  vx:    0,
-  vy:    0,
+  vx: 0,
+  vy: 0,
 };
 
 function resetShip() {
-  ship.x     = CANVAS_WIDTH  / 2;
-  ship.y     = CANVAS_HEIGHT / 2;
+  ship.x = CANVAS_WIDTH / 2;
+  ship.y = CANVAS_HEIGHT / 2;
   ship.angle = -Math.PI / 2;
-  ship.vx    = 0;
-  ship.vy    = 0;
+  ship.vx = 0;
+  ship.vy = 0;
+  resetResources();
 }
 
 // ─── Eingabe ──────────────────────────────────────────────────────────────────
@@ -41,10 +56,10 @@ const input = {
   held: new Set(),
   justPressed: new Set(),
 
-  isHeld(key)        { return this.held.has(key); },
+  isHeld(key) { return this.held.has(key); },
   isJustPressed(key) { return this.justPressed.has(key); },
 
-  clearFrameState()  { this.justPressed.clear(); },
+  clearFrameState() { this.justPressed.clear(); },
 };
 
 window.addEventListener('keydown', (event) => {
@@ -61,7 +76,7 @@ window.addEventListener('keyup', (event) => {
 // ─── Spielstand ───────────────────────────────────────────────────────────────
 
 const game = {
-  state:       State.MENU,
+  state: State.MENU,
   previousTime: 0,
 
   setState(newState) {
@@ -80,7 +95,7 @@ function updateMenu() {
 
 function updatePlaying(dt) {
   // Rotation
-  if (input.isHeld('ArrowLeft'))  ship.angle -= SHIP_ROTATION_SPEED * dt;
+  if (input.isHeld('ArrowLeft')) ship.angle -= SHIP_ROTATION_SPEED * dt;
   if (input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
 
   // Schub
@@ -125,14 +140,36 @@ function updateWin() {
 }
 
 const stateUpdaters = {
-  [State.MENU]:    updateMenu,
+  [State.MENU]: updateMenu,
   [State.PLAYING]: updatePlaying,
-  [State.DEAD]:    updateDead,
-  [State.ESCAPE]:  updateEscape,
-  [State.WIN]:     updateWin,
+  [State.DEAD]: updateDead,
+  [State.ESCAPE]: updateEscape,
+  [State.WIN]: updateWin,
 };
 
 // ─── Render-Hilfsfunktionen ───────────────────────────────────────────────────
+
+function drawHUD(ctx) {
+  const BAR_W   = 25;
+  const BAR_H   = 5;
+  const GAP     = 3;
+  const MARGIN  = 8;
+
+  const bars = [
+    { value: resources.energy, color: '#4488ff' },
+    { value: resources.shield, color: '#44ff88' },
+    { value: resources.ammo,   color: '#ffdd44' },
+  ];
+
+  bars.forEach((bar, i) => {
+    const x = MARGIN;
+    const y = MARGIN + i * (BAR_H + GAP);
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(x, y, BAR_W, BAR_H);
+    ctx.fillStyle = bar.color;
+    ctx.fillRect(x, y, Math.round(BAR_W * Math.max(0, bar.value)), BAR_H);
+  });
+}
 
 function drawShip(ctx) {
   ctx.save();
@@ -140,13 +177,15 @@ function drawShip(ctx) {
   ctx.rotate(ship.angle);
 
   ctx.beginPath();
-  ctx.moveTo( 16,   0);   // Nase – spitze Ecke vorne
-  ctx.lineTo(-11,  13);   // hinten links
+  ctx.moveTo(16, 0);   // Nase – spitze Ecke vorne
+  ctx.lineTo(-11, 13);   // hinten links
   ctx.lineTo(-11, -13);   // hinten rechts
   ctx.closePath();
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 6;
+  ctx.lineJoin = 'miter';
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -172,6 +211,7 @@ function renderPlaying(ctx) {
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   drawShip(ctx);
+  drawHUD(ctx);
 }
 
 function renderDead(ctx) {
@@ -203,11 +243,11 @@ function renderWin(ctx) {
 }
 
 const stateRenderers = {
-  [State.MENU]:    renderMenu,
+  [State.MENU]: renderMenu,
   [State.PLAYING]: renderPlaying,
-  [State.DEAD]:    renderDead,
-  [State.ESCAPE]:  renderPlaying, // Escape nutzt vorerst denselben Renderer
-  [State.WIN]:     renderWin,
+  [State.DEAD]: renderDead,
+  [State.ESCAPE]: renderPlaying, // Escape nutzt vorerst denselben Renderer
+  [State.WIN]: renderWin,
 };
 
 // ─── Game Loop ────────────────────────────────────────────────────────────────
@@ -229,9 +269,9 @@ function loop(timestamp) {
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const canvas = document.getElementById('game-canvas');
-const ctx    = canvas.getContext('2d');
+const ctx = canvas.getContext('2d');
 
-canvas.width  = CANVAS_WIDTH;
+canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 
 requestAnimationFrame((timestamp) => {
