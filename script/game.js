@@ -88,54 +88,54 @@ const stateUpdaters = {
 // ─── Render-Logik pro Zustand ─────────────────────────────────────────────────
 
 function renderMenu(ctx) {
-  ctx.fillStyle = '#0d0d1a';
+  ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  ctx.fillStyle = '#00e5ff';
-  ctx.font = 'bold 56px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 56px Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('FORT AKOPALUEZE', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
 
-  ctx.fillStyle = '#607d8b';
-  ctx.font = '20px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '20px Roboto, sans-serif';
   ctx.fillText('ENTER oder LEERTASTE zum Starten', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 function renderPlaying(ctx) {
-  ctx.fillStyle = '#050510';
+  ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  ctx.fillStyle = '#607d8b';
-  ctx.font = '16px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '16px Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('Spiel läuft – ESC für Menü', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
 }
 
 function renderDead(ctx) {
-  ctx.fillStyle = '#1a0000';
+  ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  ctx.fillStyle = '#ff1744';
-  ctx.font = 'bold 48px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 48px Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
 
-  ctx.fillStyle = '#607d8b';
-  ctx.font = '18px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '18px Roboto, sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 function renderWin(ctx) {
-  ctx.fillStyle = '#001a00';
+  ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  ctx.fillStyle = '#69ff47';
-  ctx.font = 'bold 48px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 48px Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('ENTKOMMEN!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
 
-  ctx.fillStyle = '#607d8b';
-  ctx.font = '18px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '18px Roboto, sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
