@@ -4,6 +4,7 @@ import { resources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
 import { generateLevel } from './level.js';
 import { spawnEnemiesForRoom } from './enemies.js';
+import { spawnLasersForRoom, updateLasers, drawLasersForRoom } from './laser.js';
 import { ship, resetShip, resolveCollisions, drawShip } from './ship.js';
 import { missiles, updateMissiles, drawMissiles } from './missiles.js';
 import { enemyProjectiles, updateEnemies, updateEnemyProjectiles, drawEnemies, drawEnemyProjectiles } from './enemies.js';
@@ -28,7 +29,10 @@ const game = {
 function updateMenu() {
   if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
     game.seed = Date.now();
-    game.rooms = generateLevel(game.seed, spawnEnemiesForRoom);
+    game.rooms = generateLevel(game.seed, (room, rng) => {
+      spawnEnemiesForRoom(room, rng);
+      spawnLasersForRoom(room, rng);
+    });
     game.currentRoomIndex = 0;
     game.camX = 0;
     game.camY = 0;
@@ -72,6 +76,7 @@ function updatePlaying(dt) {
     updateProjectiles(room, dt);
     updateEnemyProjectiles(room, dt);
     updateMissiles(room, dt);
+    updateLasers(room, dt);
   }
   updateParticles(dt);
 
@@ -226,6 +231,7 @@ function renderPlaying(ctx) {
   ctx.translate(-game.camX, -game.camY);
   drawRoom(ctx, room);
   drawEnemies(ctx, room);
+  drawLasersForRoom(ctx, room);
   drawEnemyProjectiles(ctx);
   drawMissiles(ctx);
   drawProjectiles(ctx);

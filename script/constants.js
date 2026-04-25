@@ -49,6 +49,15 @@ export const LAUNCHER_ALERT_DIST = 200;
 export const LAUNCHER_FIRE_DIST = 150;
 export const LAUNCHER_COOLDOWN = 10;
 
+export const LASER_ON_MIN = 0.5;
+export const LASER_ON_MAX = 2.0;
+export const LASER_OFF_MIN = 1.0;
+export const LASER_OFF_MAX = 5.0;
+export const LASER_DAMAGE = 0.01;      // per frame, bypasses invincibility
+export const LASER_EMITTER_HP = 4;
+export const LASER_EMITTER_R = 6;      // hit radius for emitter
+export const LASER_COLOR = '#ffffff';
+
 export const State = {
   MENU: 'menu',
   PLAYING: 'playing',
