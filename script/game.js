@@ -4,8 +4,8 @@ const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
 
 const SHIP_ROTATION_SPEED = 3.0;
-const SHIP_THRUST = 250;
-const SHIP_DAMPING = 0.99;
+const SHIP_THRUST         = 250;
+const SHIP_DAMPING        = 0.99;
 
 const ROOM_COUNT_MIN = 8;
 const ROOM_COUNT_MAX = 12;
@@ -38,22 +38,107 @@ function resetResources() {
 
 // ─── Schiff ───────────────────────────────────────────────────────────────────
 
+const SHIP_RADIUS      = 12;
+const RESTITUTION      = 0.25;
+const COLLISION_DAMAGE = 0.05;
+const INVINCIBLE_TIME  = 0.5;
+
 const ship = {
-  x: CANVAS_WIDTH / 2,
+  x: CANVAS_WIDTH  / 2,
   y: CANVAS_HEIGHT / 2,
   angle: 0,
   vx: 0,
   vy: 0,
+  invincibleTimer: 0,
 };
 
 function resetShip() {
   const room = game.rooms[0];
-  ship.x = 100;
-  ship.y = room ? room.entranceY : CANVAS_HEIGHT / 2;
-  ship.angle = 0;
-  ship.vx = 0;
-  ship.vy = 0;
+  ship.x               = 100;
+  ship.y               = room ? room.entranceY : CANVAS_HEIGHT / 2;
+  ship.angle           = 0;
+  ship.vx              = 0;
+  ship.vy              = 0;
+  ship.invincibleTimer = 0;
   resetResources();
+}
+
+function applyCollisionDamage() {
+  if (ship.invincibleTimer > 0) return;
+  resources.energy     -= COLLISION_DAMAGE;
+  ship.invincibleTimer  = INVINCIBLE_TIME;
+}
+
+function closestPointOnSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 0.0001) return { x: ax, y: ay };
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+  return { x: ax + t * dx, y: ay + t * dy };
+}
+
+function resolveVsSegment(ax, ay, bx, by) {
+  const cp   = closestPointOnSegment(ship.x, ship.y, ax, ay, bx, by);
+  const dx   = ship.x - cp.x;
+  const dy   = ship.y - cp.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist >= SHIP_RADIUS || dist < 0.0001) return false;
+
+  const nx = dx / dist;
+  const ny = dy / dist;
+
+  // Push out of wall
+  const overlap = SHIP_RADIUS - dist;
+  ship.x += nx * overlap;
+  ship.y += ny * overlap;
+
+  // Reflect velocity across surface normal (only if moving into wall)
+  const vDotN = ship.vx * nx + ship.vy * ny;
+  if (vDotN < 0) {
+    ship.vx -= (1 + RESTITUTION) * vDotN * nx;
+    ship.vy -= (1 + RESTITUTION) * vDotN * ny;
+  }
+  return true;
+}
+
+function resolveCollisions(room) {
+  const tEntrTop = room.entranceY - room.tunnelH / 2;
+  const tEntrBot = room.entranceY + room.tunnelH / 2;
+  const tExitTop = room.exitY     - room.tunnelH / 2;
+  const tExitBot = room.exitY     + room.tunnelH / 2;
+
+  // Ceiling segments
+  for (let i = 0; i < room.ceilingPoints.length - 1; i++) {
+    const a = room.ceilingPoints[i], b = room.ceilingPoints[i + 1];
+    if (ship.x + SHIP_RADIUS < a.x || ship.x - SHIP_RADIUS > b.x) continue;
+    if (resolveVsSegment(a.x, a.y, b.x, b.y)) applyCollisionDamage();
+  }
+
+  // Floor segments
+  for (let i = 0; i < room.floorPoints.length - 1; i++) {
+    const a = room.floorPoints[i], b = room.floorPoints[i + 1];
+    if (ship.x + SHIP_RADIUS < a.x || ship.x - SHIP_RADIUS > b.x) continue;
+    if (resolveVsSegment(a.x, a.y, b.x, b.y)) applyCollisionDamage();
+  }
+
+  // Left wall (zwei Segmente um Tunnel-Öffnung herum)
+  if (ship.x - SHIP_RADIUS < 0) {
+    if (resolveVsSegment(0, 0,          0, tEntrTop)) applyCollisionDamage();
+    if (resolveVsSegment(0, tEntrBot,   0, room.height)) applyCollisionDamage();
+  }
+
+  // Right wall
+  if (ship.x + SHIP_RADIUS > room.width) {
+    if (resolveVsSegment(room.width, 0,        room.width, tExitTop)) applyCollisionDamage();
+    if (resolveVsSegment(room.width, tExitBot, room.width, room.height)) applyCollisionDamage();
+  }
+
+  // Hindernisse: beide Dreiecksseiten (Basis ist in der Wand versenkt)
+  for (const obs of room.obstacles) {
+    const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
+    if (resolveVsSegment(obs.x - obs.w / 2, obs.baseY, obs.x, tipY)) applyCollisionDamage();
+    if (resolveVsSegment(obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) applyCollisionDamage();
+  }
 }
 
 // ─── Eingabe ──────────────────────────────────────────────────────────────────
@@ -239,8 +324,38 @@ function updatePlaying(dt) {
   ship.x += ship.vx * dt;
   ship.y += ship.vy * dt;
 
-  // Camera
+  if (ship.invincibleTimer > 0) ship.invincibleTimer -= dt;
+
   const room = game.rooms[game.currentRoomIndex];
+  if (room) resolveCollisions(room);
+
+  // Raumwechsel rechts
+  if (room && ship.x - SHIP_RADIUS > room.width) {
+    const next = game.currentRoomIndex + 1;
+    if (next < game.rooms.length) {
+      game.currentRoomIndex = next;
+      const nextRoom = game.rooms[next];
+      ship.x = SHIP_RADIUS + 1;
+      ship.y = nextRoom.entranceY;
+      game.camX = 0;
+      game.camY = 0;
+    }
+  }
+
+  // Raumwechsel links
+  if (room && ship.x + SHIP_RADIUS < 0) {
+    const prev = game.currentRoomIndex - 1;
+    if (prev >= 0) {
+      game.currentRoomIndex = prev;
+      const prevRoom = game.rooms[prev];
+      ship.x = prevRoom.width - SHIP_RADIUS - 1;
+      ship.y = prevRoom.exitY;
+      game.camX = Math.max(0, prevRoom.width - CANVAS_WIDTH);
+      game.camY = 0;
+    }
+  }
+
+  // Camera
   if (room) {
     game.camX = Math.max(0, Math.min(ship.x - CANVAS_WIDTH / 2, Math.max(0, room.width - CANVAS_WIDTH)));
     game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, room.height - CANVAS_HEIGHT)));
@@ -332,6 +447,8 @@ function drawHUD(ctx) {
 }
 
 function drawShip(ctx) {
+  if (ship.invincibleTimer > 0 && Math.floor(ship.invincibleTimer / 0.08) % 2 === 0) return;
+
   ctx.save();
   ctx.translate(ship.x, ship.y);
   ctx.rotate(ship.angle);
