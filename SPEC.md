@@ -115,19 +115,26 @@ Jeder Raum wird aus folgenden Parametern generiert:
 
 Alle Gegner haben HP, ein geometrisches Sprite, Kollisionsbox und hinterlassen bei Tod eine Explosion + Score-Punkte.
 
+### Spawn-Logik
+
+- 1–3 Gegner pro Raum (zufällig). Keine Gegner in Schatzkammer-Räumen.
+- Pro Slot: 45 % Wandgeschütz, 55 % Feind-Hubschrauber.
+- Spawn-Position: zufällig im freien Luftraum, mindestens 150 px vom Eingang entfernt.
+
 ### Gegner-Typ 1: Feind-Hubschrauber
 
-- **Verhalten:** Patrouilliert horizontal. Bei Spieler in Sichtweite (`< 400 px`): verfolgen und schießen.
+- **Verhalten:** Patrouilliert horizontal mit ±80 px/s, dreht 20 px vor Raumgrenze um. Bei Spieler `< 400 px`: verfolgt mit 150 px/s, hält Mindestabstand 80 px, schießt alle 1.5 s.
 - **HP:** 2 Treffer
 - **Schussrate:** alle 1.5 s
-- **Sprite:** kleines Rechteck (16×8 px) + Rotor-Linie, Farbe Orange
+- **Sprite:** weißes gefülltes Quadrat 14×14 px
+- **Projektil:** 300 px/s, verursacht 0.08 Energie-Schaden (mit Unverwundbarkeits-Fenster)
 
 ### Gegner-Typ 2: Wandgeschütz
 
-- **Platzierung:** an Boden, Decke oder Wand verankert
-- **Verhalten:** Lauf dreht sich zum Spieler, feuert alle 2 s
+- **Platzierung:** an Boden oder Decke verankert (zufällig beim Spawn)
+- **Verhalten:** Lauf dreht sich mit 2 rad/s zum Spieler (Winkel auf Cave-Seite beschränkt). Schießt alle 2 s nur bei freier Sichtlinie (`hasLineOfSight`). Reichweite 380 px.
 - **HP:** 3 Treffer
-- **Sprite:** Kreis (10 px) + drehender Strich (Lauf, 14 px), Farbe Rot
+- **Sprite:** Kugel r=4 px (gefüllt) + Rohr 25×5 px (lineWidth 5), weiß
 
 ### Gegner-Typ 3: Heimsuchungsrakete
 

@@ -30,10 +30,10 @@
 
 ## Phase 3 – Feinde
 
-- [ ] **8. Feind-Typ 1: Gegnerischer Hubschrauber**
+- [x] **8. Feind-Typ 1: Gegnerischer Hubschrauber**
   Patrouilliert horizontal im Raum, dreht um bei Wandkontakt. Einfache KI: fliegt auf Spieler zu wenn in Sichtweite, schießt periodisch. Geometrisches Sprite (kleines Rechteck + Linien in anderer Farbe).
 
-- [ ] **9. Feind-Typ 2: Bodenkanone / Wandgeschütz**
+- [x] **9. Feind-Typ 2: Bodenkanone / Wandgeschütz**
   Stationär an Wand/Boden/Decke befestigt. Dreht Lauf zum Spieler, feuert Projektile in kurzen Intervallen. Kann zerstört werden. Geometrisch: Kreis + drehender Strich.
 
 - [ ] **10. Feind-Typ 3: Rakete / Heimsuchungsgeschoss**

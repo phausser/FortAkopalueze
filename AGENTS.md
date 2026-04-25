@@ -77,34 +77,33 @@ DYING ──animation done──→ [State: DEAD]
 
 | Feld | Wert |
 |---|---|
-| Sprite | Rechteck 20×8 px + Rotor-Linie, Farbe Orange `#ff6600` |
+| Sprite | Gefülltes weißes Quadrat 14×14 px |
+| Farbe | Weiß `#ffffff` |
 | HP | 2 |
-| Score bei Tod | 100 |
 | Schussrate | alle 1.5 s |
 
 ### Zustandsmaschine
 
 ```
-PATROL ──player in range (< 400px)──→ CHASE
-CHASE ──player out of range (> 500px)──→ PATROL
-CHASE / PATROL ──fire cooldown ready──→ SHOOT (sofort zurück)
-any ──hp=0──→ DYING
+patrol ──dist < 400px──→ chase
+chase  ──dist > 500px──→ patrol
+chase  ──fireCooldown ≤ 0──→ schießt (bleibt in chase)
+any    ──hp = 0──→ dying (0.5 s Blinken, dann entfernt)
 ```
 
 ### Verhalten
 
-- **PATROL:** Fliegt horizontal mit `vx = ±2`. Dreht um bei Wand-Kollision oder Raum-Grenze.
-- **CHASE:** Fliegt auf Spieler-Position zu, Geschwindigkeit `3 px/frame`. Hält Mindest-Abstand `80 px`.
-- **SHOOT:** Feuert Projektil in Richtung Spieler. Mündungsfeuer-Partikel.
-- **DYING:** 0.5 s Explosion-Animation, dann `alive = false`.
+- **patrol:** Fliegt horizontal mit `±80 px/s`. Dreht um 20 px vor Raumgrenze.
+- **chase:** Fliegt direkt auf Spieler zu, `150 px/s`. Hält Mindestabstand `80 px`. Schießt alle 1.5 s.
+- **dying:** Blinkt 0.5 s (14 Hz), dann aus Array entfernt. Partikel bei Treffer.
+- Y wird pro Frame auf den Bereich zwischen Decke und Boden geclampt.
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler-Projektil | -1 HP |
-| Wand | Richtungsumkehr |
-| Spieler (Kollision) | -15 HP Spieler, -2 HP Feind |
+| Spieler-Projektil | −1 HP, Partikel |
+| Spieler (Körperkontakt) | −0.08 Energie (mit Unverwundbarkeits-Fenster) |
 
 ---
 
@@ -114,34 +113,35 @@ any ──hp=0──→ DYING
 
 | Feld | Wert |
 |---|---|
-| Sprite | Kreis r=10 px + Lauf-Linie 14 px, Farbe Rot `#ff2200` |
+| Sprite | Kugel r=4 px (gefüllt) + Rohr 25×5 px (Linie), weiß |
 | HP | 3 |
-| Score bei Tod | 150 |
 | Schussrate | alle 2.0 s |
-| Montierung | Boden / Decke / Wand (links/rechts) |
+| Montierung | Boden oder Decke (zufällig beim Spawn) |
+| Hitradius | 10 px |
 
 ### Zustandsmaschine
 
 ```
-IDLE ──player in range (< 350px)──→ TRACKING
-TRACKING ──fire cooldown ready──→ SHOOT → TRACKING
-TRACKING ──player out of range──→ IDLE
-any ──hp=0──→ DYING
+idle     ──dist < 380px──→ tracking
+tracking ──dist > 380px──→ idle
+tracking ──fireCooldown ≤ 0 + Sichtlinie frei──→ schießt
+any      ──hp = 0──→ dying (0.5 s Blinken, dann entfernt)
 ```
 
 ### Verhalten
 
-- **IDLE:** Lauf zeigt in Montierungs-Richtung (z. B. Boden → nach oben).
-- **TRACKING:** Lauf dreht sich zum Spieler, Drehrate `5°/frame`.
-- **SHOOT:** Projektil in Lauf-Richtung, Mündungsfeuer-Partikel.
-- Position ist fest (kein `vx`/`vy`). Montierungs-Seite bestimmt beim Spawn die Lauf-Startausrichtung.
+- **idle:** Lauf zeigt senkrecht in den Hohlraum (Boden → −π/2, Decke → π/2).
+- **tracking:** Lauf dreht sich mit `2 rad/s` zum Spieler. Winkel auf Cave-Seite beschränkt (Boden: −π…0, Decke: 0…π).
+- **schießen:** Nur wenn `hasLineOfSight` true. Projektil in aktueller Laufrichtung, `300 px/s`.
+- Sichtlinienprüfung via Segment-Schnitt-Test gegen alle Decken-/Boden-Segmente und Hindernisseiten.
+- Position ist fest, kein `vx`/`vy`.
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler-Projektil | -1 HP |
-| Spieler (Kollision) | -10 HP Spieler |
+| Spieler-Projektil (r < 10 px) | −1 HP, Partikel |
+| Spieler (Körperkontakt) | −0.08 Energie (mit Unverwundbarkeits-Fenster) |
 
 ---
 
