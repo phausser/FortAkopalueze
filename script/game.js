@@ -10,7 +10,7 @@ const SHIP_DAMPING = 0.99;
 const ROOM_COUNT_MIN = 8;
 const ROOM_COUNT_MAX = 12;
 const MIN_TUNNEL_H = 120;
-const BG_COLORS = ['#3a11111', '#113511', '#3d1111', '#111113a', '#3a3d11'];
+const BG_COLORS = ['#3a1111', '#113511', '#3d1111', '#11113a', '#3a3d11'];
 
 // ─── Spielzustände ────────────────────────────────────────────────────────────
 
@@ -43,6 +43,13 @@ const RESTITUTION = 0.25;
 const COLLISION_DAMAGE = 0.05;
 const INVINCIBLE_TIME = 0.5;
 
+const PROJECTILE_SPEED = 600;
+const PROJECTILE_LENGTH = 8;
+const FIRE_COOLDOWN = 0.2;
+const PARTICLE_SPEED = 120;
+const PARTICLE_LIFETIME = 0.42;
+const PARTICLE_COUNT = 12;
+
 const ship = {
   x: CANVAS_WIDTH / 2,
   y: CANVAS_HEIGHT / 2,
@@ -50,6 +57,7 @@ const ship = {
   vx: 0,
   vy: 0,
   invincibleTimer: 0,
+  fireCooldown: 0,
 };
 
 function resetShip() {
@@ -60,6 +68,7 @@ function resetShip() {
   ship.vx = 0;
   ship.vy = 0;
   ship.invincibleTimer = 0;
+  ship.fireCooldown = 0;
   resetResources();
 }
 
@@ -138,6 +147,79 @@ function resolveCollisions(room) {
     const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
     if (resolveVsSegment(obs.x - obs.w / 2, obs.baseY, obs.x, tipY)) applyCollisionDamage();
     if (resolveVsSegment(obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) applyCollisionDamage();
+  }
+}
+
+// ─── Projektile & Partikel ────────────────────────────────────────────────────
+
+const projectiles = [];
+const particles = [];
+
+function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
+  const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  const d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
+  const d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
+  const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+  const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+  return !(hasNeg && hasPos);
+}
+
+function spawnImpactParticles(x, y) {
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    particles.push({ x, y, vx: Math.cos(angle) * PARTICLE_SPEED, vy: Math.sin(angle) * PARTICLE_SPEED, life: PARTICLE_LIFETIME });
+  }
+}
+
+function shoot() {
+  if (ship.fireCooldown > 0) return;
+  resources.ammo -= 1 / 80;
+  projectiles.push({
+    x: ship.x + Math.cos(ship.angle) * 16,
+    y: ship.y + Math.sin(ship.angle) * 16,
+    vx: Math.cos(ship.angle) * PROJECTILE_SPEED,
+    vy: Math.sin(ship.angle) * PROJECTILE_SPEED,
+  });
+  ship.fireCooldown = FIRE_COOLDOWN;
+}
+
+function updateProjectiles(room, dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    let hit = p.x < 0 || p.x > room.width;
+
+    if (!hit) {
+      const ceilY = interpolateWall(room.ceilingPoints, p.x);
+      const floorY = interpolateWall(room.floorPoints, p.x);
+      if (p.y < ceilY || p.y > floorY) hit = true;
+    }
+
+    if (!hit) {
+      for (const obs of room.obstacles) {
+        const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
+        if (pointInTriangle(p.x, p.y, obs.x - obs.w / 2, obs.baseY, obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) {
+          hit = true; break;
+        }
+      }
+    }
+
+    if (hit) {
+      spawnImpactParticles(p.x, p.y);
+      projectiles.splice(i, 1);
+    }
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
   }
 }
 
@@ -299,6 +381,8 @@ function updateMenu() {
     game.currentRoomIndex = 0;
     game.camX = 0;
     game.camY = 0;
+    projectiles.length = 0;
+    particles.length = 0;
     resetShip();
     game.setState(State.PLAYING);
   }
@@ -325,9 +409,16 @@ function updatePlaying(dt) {
   ship.y += ship.vy * dt;
 
   if (ship.invincibleTimer > 0) ship.invincibleTimer -= dt;
+  if (ship.fireCooldown > 0) ship.fireCooldown -= dt;
+
+  if (input.isHeld('Space')) shoot();
 
   const room = game.rooms[game.currentRoomIndex];
-  if (room) resolveCollisions(room);
+  if (room) {
+    resolveCollisions(room);
+    updateProjectiles(room, dt);
+  }
+  updateParticles(dt);
 
   // Raumwechsel rechts
   if (room && ship.x - SHIP_RADIUS > room.width) {
@@ -424,6 +515,32 @@ function drawRoom(ctx, room) {
   }
 }
 
+function drawProjectiles(ctx) {
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  for (const p of projectiles) {
+    const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    const nx = p.vx / spd;
+    const ny = p.vy / spd;
+    ctx.beginPath();
+    ctx.moveTo(p.x - nx * PROJECTILE_LENGTH / 2, p.y - ny * PROJECTILE_LENGTH / 2);
+    ctx.lineTo(p.x + nx * PROJECTILE_LENGTH / 2, p.y + ny * PROJECTILE_LENGTH / 2);
+    ctx.stroke();
+  }
+}
+
+function drawParticles(ctx) {
+  for (const p of particles) {
+    ctx.globalAlpha = p.life / PARTICLE_LIFETIME;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawHUD(ctx) {
   const BAR_W = 25;
   const BAR_H = 5;
@@ -494,6 +611,8 @@ function renderPlaying(ctx) {
   ctx.save();
   ctx.translate(-game.camX, -game.camY);
   drawRoom(ctx, room);
+  drawProjectiles(ctx);
+  drawParticles(ctx);
   drawShip(ctx);
   ctx.restore();
 
