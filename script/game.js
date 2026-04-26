@@ -11,6 +11,7 @@ import { enemyProjectiles, updateEnemies, updateEnemyProjectiles, drawEnemies, d
 import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projectiles.js';
 import { spawnPickupsForRoom, updatePickups, drawPickups } from './pickups.js';
 import { spawnReactor, updateReactor, drawReactor, isReactorDestroyed, screenShake } from './reactor.js';
+import { score, resetScore } from './score.js';
 
 // ─── Spielstand ───────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ function updateMenu() {
     enemyProjectiles.length = 0;
     missiles.length = 0;
     resetShip(game.rooms[0]);
+    resetScore();
     game.setState(State.PLAYING);
   }
 }
@@ -80,7 +82,7 @@ function handleRoomTransition(room) {
 
 function updatePlaying(dt) {
   const shift = input.isHeld('ShiftLeft') || input.isHeld('ShiftRight');
-  if (!shift && input.isHeld('ArrowLeft'))  ship.angle -= SHIP_ROTATION_SPEED * dt;
+  if (!shift && input.isHeld('ArrowLeft')) ship.angle -= SHIP_ROTATION_SPEED * dt;
   if (!shift && input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
   if (shift && input.isHeld('ArrowLeft')) {
     ship.vx += Math.sin(ship.angle) * SHIP_STRAFE * dt;
@@ -109,7 +111,7 @@ function updatePlaying(dt) {
   ship.y += ship.vy * dt;
 
   if (ship.invincibleTimer > 0) ship.invincibleTimer -= dt;
-  if (ship.fireCooldown > 0)    ship.fireCooldown -= dt;
+  if (ship.fireCooldown > 0) ship.fireCooldown -= dt;
 
   if (input.isHeld('Space')) shoot();
 
@@ -151,11 +153,11 @@ function updateWin() {
 }
 
 const stateUpdaters = {
-  [State.MENU]:    updateMenu,
+  [State.MENU]: updateMenu,
   [State.PLAYING]: updatePlaying,
-  [State.DEAD]:    updateDead,
-  [State.ESCAPE]:  updateEscape,
-  [State.WIN]:     updateWin,
+  [State.DEAD]: updateDead,
+  [State.ESCAPE]: updateEscape,
+  [State.WIN]: updateWin,
 };
 
 // ─── Render-Hilfsfunktionen ───────────────────────────────────────────────────
@@ -215,7 +217,7 @@ function drawHUD(ctx) {
   const bars = [
     { value: resources.energy, color: '#4488ff' },
     { value: resources.shield, color: '#44ff88' },
-    { value: resources.ammo,   color: '#ffdd44' },
+    { value: resources.ammo, color: '#ffdd44' },
   ];
 
   bars.forEach((bar, i) => {
@@ -226,6 +228,13 @@ function drawHUD(ctx) {
     ctx.fillStyle = bar.color;
     ctx.fillRect(x, y, Math.round(BAR_W * Math.max(0, bar.value)), BAR_H);
   });
+
+  const totalBarsH = bars.length * BAR_H + (bars.length - 1) * GAP;
+  const scoreY = MARGIN + totalBarsH / 2;
+  ctx.font = '11px "Michroma", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(String(score.value).padStart(6, '0'), CANVAS_WIDTH - MARGIN, scoreY + 4);
 }
 
 // ─── Render-Logik pro Zustand ─────────────────────────────────────────────────
@@ -291,11 +300,11 @@ function renderWin(ctx) {
 }
 
 const stateRenderers = {
-  [State.MENU]:    renderMenu,
+  [State.MENU]: renderMenu,
   [State.PLAYING]: renderPlaying,
-  [State.DEAD]:    renderDead,
-  [State.ESCAPE]:  renderPlaying,
-  [State.WIN]:     renderWin,
+  [State.DEAD]: renderDead,
+  [State.ESCAPE]: renderPlaying,
+  [State.WIN]: renderWin,
 };
 
 // ─── Game Loop ────────────────────────────────────────────────────────────────

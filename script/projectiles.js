@@ -1,9 +1,9 @@
-import { SHIP_RADIUS, PROJECTILE_SPEED, PROJECTILE_LENGTH, FIRE_COOLDOWN, MINE_RADIUS, ENEMY_HALF } from './constants.js';
+import { SHIP_RADIUS, PROJECTILE_SPEED, PROJECTILE_LENGTH, FIRE_COOLDOWN, MINE_RADIUS, ENEMY_HALF, ENEMY_DMG, SCORE_ENEMY } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { resources } from './resources.js';
 import { interpolateWall } from './level.js';
 import { spawnImpactParticles } from './particles.js';
-import { ENEMY_DMG } from './constants.js';
+import { addScore } from './score.js';
 
 export const projectiles = [];
 
@@ -58,7 +58,7 @@ export function updateProjectiles(room, dt) {
         const edx = p.x - e.x, edy = p.y - e.y;
         if (edx * edx + edy * edy < hitRadius * hitRadius) {
           e.hp--;
-          if (e.hp <= 0) { e.state = 'dying'; e.dyingTimer = 0.5; }
+          if (e.hp <= 0) { e.state = 'dying'; e.dyingTimer = 0.5; addScore(SCORE_ENEMY); }
           spawnImpactParticles(p.x, p.y);
           hit = true;
           break;

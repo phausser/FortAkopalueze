@@ -1,9 +1,10 @@
 import {
   REACTOR_CORE_R, REACTOR_HP, REACTOR_ORBIT_R, REACTOR_EXPLODE_TIME,
-  REACTOR_SHAKE_HIT, REACTOR_SHAKE_EXPLODE, REACTOR_ELECTRON_R,
+  REACTOR_SHAKE_HIT, REACTOR_SHAKE_EXPLODE, REACTOR_ELECTRON_R, SCORE_REACTOR,
 } from './constants.js';
 import { particles, spawnImpactParticles } from './particles.js';
 import { projectiles } from './projectiles.js';
+import { addScore } from './score.js';
 
 // Drei elliptische Orbitebenen wie beim klassischen Atom-Symbol
 const ORBIT_TILTS = [0, Math.PI / 3, -Math.PI / 3];
@@ -85,6 +86,7 @@ export function updateReactor(room, dt) {
         r.state = 'exploding';
         r.explodeTimer = REACTOR_EXPLODE_TIME;
         screenShake = REACTOR_SHAKE_EXPLODE;
+        addScore(SCORE_REACTOR);
         for (let j = 0; j < 250; j++) {
           const a = Math.random() * Math.PI * 2;
           const spd = 60 + Math.random() * 500;
