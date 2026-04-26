@@ -1,10 +1,13 @@
 import {
   REACTOR_CORE_R, REACTOR_HP, REACTOR_ORBIT_R, REACTOR_EXPLODE_TIME,
   REACTOR_SHAKE_HIT, REACTOR_SHAKE_EXPLODE, REACTOR_ELECTRON_R, SCORE_REACTOR,
+  SHIP_RADIUS, REACTOR_CONTACT_DAMAGE,
 } from './constants.js';
 import { particles, spawnImpactParticles } from './particles.js';
 import { projectiles } from './projectiles.js';
 import { addScore } from './score.js';
+import { ship } from './ship.js';
+import { resources } from './resources.js';
 
 // Drei elliptische Orbitebenen wie beim klassischen Atom-Symbol
 const ORBIT_TILTS = [0, Math.PI / 3, -Math.PI / 3];
@@ -71,6 +74,13 @@ export function updateReactor(room, dt) {
   }
 
   for (const e of r.electrons) e.angle += e.speed * dt;
+
+  // Kontakt-Schaden (umgeht Shield + Unverwundbarkeit)
+  const contactDist = REACTOR_CORE_R + SHIP_RADIUS;
+  const sdx = ship.x - r.x, sdy = ship.y - r.y;
+  if (sdx * sdx + sdy * sdy < contactDist * contactDist) {
+    resources.energy = Math.max(0, resources.energy - REACTOR_CONTACT_DAMAGE * dt);
+  }
 
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
