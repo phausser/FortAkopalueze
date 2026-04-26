@@ -32,7 +32,7 @@ export const ENEMY_PROJ_SPEED = 300;
 export const ENEMY_DMG = 0.08;
 
 export const TURRET_HP = 3;
-export const TURRET_FIRE_RATE = 2.0;
+export const TURRET_FIRE_RATE = 3.0;
 export const TURRET_ROT_SPEED = 2.0;
 export const TURRET_RANGE = 380;
 

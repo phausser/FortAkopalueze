@@ -161,13 +161,11 @@ function updateTurret(e, room, dt) {
   e.fireCooldown -= dt;
   if (e.fireCooldown <= 0) {
     e.fireCooldown = TURRET_FIRE_RATE;
-    const offsetY = e.mount === 'floor' ? -4 : 4;
-    if (hasLineOfSight(room, e.x, e.y + offsetY, ship.x, ship.y)) {
-      enemyProjectiles.push({
-        x: e.x, y: e.y,
-        vx: Math.cos(e.angle) * ENEMY_PROJ_SPEED,
-        vy: Math.sin(e.angle) * ENEMY_PROJ_SPEED,
-      });
+    const apexY = e.y + (e.mount === 'floor' ? -9 : 9);
+    const tipX = e.x + Math.cos(e.angle) * 13;
+    const tipY = apexY + Math.sin(e.angle) * 13;
+    if (hasLineOfSight(room, tipX, tipY, ship.x, ship.y)) {
+      spawnMissile(tipX, tipY);
     }
   }
 }
