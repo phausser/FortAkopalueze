@@ -260,14 +260,21 @@ export function drawEnemies(ctx, room) {
     ctx.strokeStyle = '#ffffff';
 
     if (e.kind === 'turret') {
+      const r = 9;
       ctx.beginPath();
-      ctx.arc(e.x, e.y, 6, 0, Math.PI * 2);
+      if (e.mount === 'floor') {
+        ctx.arc(e.x, e.y, r, Math.PI, 0);
+      } else {
+        ctx.arc(e.x, e.y, r, 0, Math.PI);
+      }
+      ctx.closePath();
       ctx.fill();
-      ctx.lineWidth = 6;
+      const apexOffset = e.mount === 'floor' ? -r : r;
+      ctx.lineWidth = 5;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(e.x, e.y);
-      ctx.lineTo(e.x + Math.cos(e.angle) * 20, e.y + Math.sin(e.angle) * 20);
+      ctx.moveTo(e.x, e.y + apexOffset);
+      ctx.lineTo(e.x + Math.cos(e.angle) * 13, e.y + apexOffset + Math.sin(e.angle) * 13);
       ctx.stroke();
     } else if (e.kind === 'launcher') {
       const pulse = e.state === 'alert'
