@@ -63,7 +63,7 @@ export const LASER_EMITTER_R = 6;      // hit radius for emitter
 export const LASER_COLOR = '#ffffff';
 
 export const PICKUP_RADIUS = 6;
-export const PICKUP_COLLECT_DIST = 12;
+export const PICKUP_COLLECT_DIST = 22;
 export const PICKUP_AMOUNT = 0.25;
 
 export const State = {
