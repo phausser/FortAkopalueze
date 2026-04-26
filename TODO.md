@@ -36,11 +36,11 @@
 - [x] **9. Feind-Typ 2: Bodenkanone / Wandgeschütz**
   Stationär an Wand/Boden/Decke befestigt. Dreht Lauf zum Spieler, feuert Projektile in kurzen Intervallen. Kann zerstört werden. Geometrisch: Kreis + drehender Strich.
 
-- [ ] **10. Feind-Typ 3: Rakete / Heimsuchungsgeschoss**
-  Wird von bestimmten Stellungen abgefeuert und verfolgt den Spieler. Langsamere Kurskorrektur. Explodiert bei Kollision (Splash-Schaden). Geometrisch: Dreieck mit Flammen-Trail als Partikel.
+- [x] **10. Feind-Typ 3: Rakete / Heimsuchungsgeschoss**
+  Wird von Raketenwerfer-Gegner abgefeuert und verfolgt den Spieler. Langsamere Kurskorrektur. Explodiert bei Kollision (Splash-Schaden). Geometrisch: Dreieck mit weißem Partikel-Trail.
 
-- [ ] **11. Feind-Typ 4: Laser-Barriere**
-  Gepulster Laserstrahl zwischen zwei Punkten (Wand zu Wand oder Gerät zu Gerät). Blinkt in Intervallen (an/aus). Schaden sofort bei Kontakt. Geometrisch: dünne Linie mit Glow-Effekt, Emitter als kleine Rechtecke.
+- [x] **11. Feind-Typ 4: Laser-Barriere**
+  Gepulster Laserstrahl von Decke zu Boden, auch diagonal. Zufällig 0.5–2 s an / 1–5 s aus. Schaden 0.01/frame ohne Unverwundbarkeit. Zerstört Spieler- und Gegner-Projektile sowie Raketen. Emitter einzeln zerstörbar (4 HP). Geometrisch: weiße Linie mit Glow, 8×8 px Emitter-Rechtecke.
 
 ## Phase 4 – Spielablauf
 
@@ -55,8 +55,8 @@
 
 ## Phase 5 – Polishing
 
-- [ ] **12. Partikel- & Effekt-System**
-  Generisches Partikel-System: Explosion (radiale Funken), Treffer-Blitz, Rauch-Trail beim Heli, Mündungsfeuer. Partikel haben Lebensdauer, Geschwindigkeit, Fade-out. Alles geometrisch (Kreise, Linien, Rechtecke).
+- [x] **12. Partikel- & Effekt-System**
+  Generisches Partikel-System implementiert: Treffer-Funken, Raketen-Trail, Explosions-Burst. Partikel mit Lebensdauer, Geschwindigkeit, Alpha-Fade-out. `maxLife`-Feld für variable Lebensdauern.
 
 - [ ] **17. Visuelles Styling & Atmosphäre**
   Dunkler Hintergrund, Höhlenwände in dunkelgrau/anthrazit. Spieler-Heli in hellem Cyan/Weiß. Feinde in Orange/Rot. Extras in Signalfarben. Glow-Effekte via Canvas-shadowBlur. Scan-Line-Overlay optional für Retro-Look. Flackernde Beleuchtung in Räumen.

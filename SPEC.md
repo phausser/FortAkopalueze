@@ -10,9 +10,9 @@ Ein Single-Player-Arcade-Shooter im Stil von *Fort Apocalypse* (C64, 1982). Der 
 
 | Eigenschaft | Wert |
 |---|---|
-| Technologie | HTML5 Canvas 2D, Vanilla JS (ES2022), Web Audio API |
-| Dateien | `index.html`, `game.js`, `style.css` (single-file-Option möglich) |
-| Auflösung | 960 × 540 px (skaliert per CSS auf Viewport) |
+| Technologie | HTML5 Canvas 2D, Vanilla JS (ES2022, ES Modules), Web Audio API |
+| Dateien | `index.html`, `script/*.js` (modular), `style/game.css` |
+| Auflösung | 1024 × 768 px (skaliert per CSS auf Viewport) |
 | Ziel-FPS | 60 |
 | Persistenz | LocalStorage (Highscores) |
 | Abhängigkeiten | keine externen Bibliotheken |
@@ -136,19 +136,20 @@ Alle Gegner haben HP, ein geometrisches Sprite, Kollisionsbox und hinterlassen b
 - **HP:** 3 Treffer
 - **Sprite:** Kugel r=4 px (gefüllt) + Rohr 25×5 px (lineWidth 5), weiß
 
-### Gegner-Typ 3: Heimsuchungsrakete
+### Gegner-Typ 3: Raketenwerfer + Rakete
 
-- **Auslöser:** wird von Raketenwerfer abgefeuert wenn Spieler Raum betritt
-- **Verhalten:** verfolgt Spieler mit langsamer Kurskorrektur (`3°/frame`), Geschwindigkeit `4 px/frame`
-- **Schaden:** Splash-Radius 40 px
-- **Sprite:** Dreieck (10×6 px) + Partikel-Trail (Flammen), Farbe Gelb-Orange
+- **Raketenwerfer:** stationärer Kreis r=10 px. Alert bei `< 200 px`, feuert bei `< 150 px`, dann 10 s Cooldown. HP: 3.
+- **Rakete:** verfolgt Spieler mit `π/60 rad/frame` Kurskorrektur, `120 px/s`. Weißer Partikel-Trail.
+- **Schaden:** Splash-Radius 40 px, 0.2 Energie
+- **Sprite:** Dreieck 10×6 px, weiß
 
 ### Gegner-Typ 4: Laser-Barriere
 
-- **Geometrie:** Strahl zwischen zwei Emitter-Punkten (horizontal oder vertikal)
-- **Verhalten:** pulsiert (an 0.8 s / aus 0.4 s), kein HP (permanent bis Emitter zerstört)
-- **Schaden:** sofort bei Kontakt, kontinuierlich (`2 HP/frame`)
-- **Sprite:** Linie mit `shadowBlur`-Glow, Emitter als 8×8-Rechtecke, Farbe Cyan
+- **Geometrie:** Strahl von Decke zu Boden (auch diagonal, bis ±250 px versetzt)
+- **Verhalten:** zufällig 0.5–2 s an / 1–5 s aus. Zerstört Projektile und Raketen beim Kontakt.
+- **Schaden:** 0.01/frame direkt (kein Unverwundbarkeits-Fenster)
+- **Emitter:** je 4 HP, einzeln zerstörbar. Zerstörung → Barriere permanent aus.
+- **Sprite:** weiße Linie mit `shadowBlur = 12`, Emitter als 8×8-Rechtecke, weiß
 
 ---
 

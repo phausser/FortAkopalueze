@@ -4,26 +4,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Starten
 
-Keine Build-Tools nötig. Einfach `index.html` im Browser öffnen.
+Lokaler Dev-Server nötig (z.B. `python3 -m http.server`), da ES Modules `file://` nicht unterstützen. Dann `index.html` im Browser öffnen.
+
+## Modulstruktur (`script/`)
+
+| Datei | Inhalt |
+|---|---|
+| `constants.js` | Alle Konstanten + `State`-Enum |
+| `input.js` | Tastatur-Handler (`input.isHeld`, `input.isJustPressed`) |
+| `resources.js` | `resources.energy/.shield/.ammo` (0.0–1.0) |
+| `particles.js` | Partikel-Array, `spawnImpactParticles`, update/draw |
+| `level.js` | PRNG, `interpolateWall`, `lerp`, `generateLevel(seed, spawnFn)` |
+| `ship.js` | `ship`-Objekt, `resetShip`, `applyDamage`, Kollision, `drawShip` |
+| `missiles.js` | `missiles[]`, `spawnMissile(x,y)`, update/draw |
+| `enemies.js` | Alle Gegnertypen (helicopter/turret/launcher), `enemyProjectiles[]` |
+| `laser.js` | `room.lasers[]`, `spawnLasersForRoom`, update/draw |
+| `projectiles.js` | `projectiles[]`, `shoot()`, update/draw |
+| `game.js` | Game-Loop, State Machine, Renderer, `drawRoom`, `drawHUD` |
 
 ## Architektur
 
-Single-file JavaScript-Game (`script/game.js`). Kein Framework, kein Bundle-Step.
+**Abhängigkeiten (keine Zyklen):**
+`constants ← alle` / `particles ← missiles, enemies, laser, projectiles` / `level ← enemies, missiles, laser, projectiles` / `ship ← enemies, missiles, laser, projectiles` / `missiles ← enemies` / `game ← alles`
 
-**State Machine:** `MENU → PLAYING → ESCAPE → WIN` (oder `→ DEAD`).  
-State-Wechsel nur via `game.setState(State.X)`.
+**State Machine:** `MENU → PLAYING → ESCAPE → WIN` (oder `→ DEAD`). State-Wechsel nur via `game.setState(State.X)`.
 
-**Game Loop:** `requestAnimationFrame` → `loop(timestamp)` → `stateUpdaters[state](dt)` → `stateRenderers[state](ctx)`.  
-`dt` ist geclampt auf max 100 ms (verhindert Sprünge nach Tab-Wechsel).
+**Game Loop:** `requestAnimationFrame` → `loop(timestamp)` → `stateUpdaters[state](dt)` → `stateRenderers[state](ctx)`. `dt` geclampt auf max 100 ms.
 
-**Input:** `input.isHeld(code)` für gehaltene Tasten, `input.isJustPressed(code)` für einmalige Aktionen. `input.clearFrameState()` am Ende jedes Frames aufrufen.
+**Level-Generierung:** `generateLevel(seed, spawnFn)` nimmt eine Callback-Funktion `(room, rng) => void` die Enemies und Laser pro Raum spawnt. In `game.js` zusammengesetzt aus `spawnEnemiesForRoom` + `spawnLasersForRoom`.
 
-**Ressourcen:** `resources.energy / .shield / .ammo` (0.0–1.0). Reset via `resetResources()` (wird in `resetShip()` aufgerufen).
+**Laser-Schaden** umgeht Unverwundbarkeit — direkt `resources.energy -= LASER_DAMAGE` statt `applyDamage()`.
 
-**Rendering:** Ausschließlich geometrisch auf HTML5 Canvas 2D — keine Bitmaps, keine externen Assets. HUD-Overlay via `drawHUD(ctx)` nach dem Weltrendering zeichnen.
+**Canvas:** 1024 × 768 px. Weltkoordinaten ≠ Kamerakoordinaten: immer `ctx.save() / translate(-camX, -camY) / ctx.restore()` für Weltspace.
 
 ## Konventionen
 
-- Alle Spielkonstanten oben in `game.js` als `const` — nie Magic Numbers im Code verteilen.
-- Weltkoordinaten von Kamerakoordinaten trennen, sobald die Kamera eingeführt wird.
-- Neue Entities bekommen `update(dt)` und `draw(ctx)` — kein Render-Code in der Update-Logik.
+- Alle Konstanten in `constants.js` — nie Magic Numbers im Code.
+- Neue Entities bekommen eigene Module mit `spawn*`, `update*`, `draw*` Funktionen.
+- Kein Render-Code in Update-Logik.

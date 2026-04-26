@@ -1,31 +1,46 @@
 # Fort Akopalueze
 
-Ein browserbasiertes 2D-Hubschrauber-Actionspiel im Retro-Style. Du steuerst einen bewaffneten Helikopter durch prozedural generierte Höhlen, kämpfst gegen Wachdrohnen, Geschütztürme und Raketen – und musst am Ende den Reaktor zerstören und entkommen, bevor der Countdown abläuft.
+Ein browserbasiertes 2D-Hubschrauber-Actionspiel im Retro-Style. Du steuerst einen bewaffneten Helikopter durch prozedural generierte Höhlen, kämpfst gegen Wachdrohnen, Geschütztürme, Raketenwerfer und Laser-Barrieren – und musst am Ende den Reaktor zerstören und entkommen, bevor der Countdown abläuft.
 
 ## Spielablauf
 
 1. Fliege durch 8–12 Räume und halte Energie, Munition und Treibstoff im Blick
 2. Zerstöre den Reaktor im letzten Raum
-3. Enkomme innerhalb von 30 Sekunden zurück zum Eingang
+3. Entkome innerhalb von 30 Sekunden zurück zum Eingang
 
 ## Technologien
 
 - **HTML5 Canvas** – Rendering, vollständig geometrisch (keine Sprites/Texturen)
-- **Vanilla JavaScript** – Game-Loop via `requestAnimationFrame`, keine Frameworks
-- **Web Audio API** – Synthetische Soundeffekte ohne externe Dateien
-- **CSS (Custom Properties, Grid)** – Layout und Vollbild-Skalierung
-- **LocalStorage** – Highscore-Persistenz
+- **Vanilla JavaScript (ES Modules)** – Game-Loop via `requestAnimationFrame`, keine Frameworks
+- **Web Audio API** – Synthetische Soundeffekte ohne externe Dateien *(geplant)*
+- **CSS** – Layout und Vollbild-Skalierung
+- **LocalStorage** – Highscore-Persistenz *(geplant)*
 
 ## Starten
 
-Einfach `index.html` im Browser öffnen – keine Build-Tools nötig.
+Lokalen Dev-Server starten (ES Modules benötigen HTTP):
+
+```bash
+python3 -m http.server
+```
+
+Dann `http://localhost:8000` im Browser öffnen.
 
 ## Steuerung
 
 | Taste | Aktion |
 |---|---|
-| `W` / `↑` | Schub nach oben |
-| `A` `D` / `←` `→` | Drift links / rechts |
-| `S` / `↓` | Schub nach unten |
+| `↑` | Schub vorwärts |
+| `↓` | Schub rückwärts |
+| `←` / `→` | Rotieren |
 | `Leertaste` | Schießen |
 | `ESC` | Pause / Menü |
+
+## Gegner
+
+| Typ | Verhalten |
+|---|---|
+| Hubschrauber | Patrouilliert, verfolgt und schießt bei Sichtkontakt |
+| Wandgeschütz | Stationär, dreht Lauf zum Spieler, schießt bei freier Sicht |
+| Raketenwerfer | Stationär, feuert Heimsuchungsrakete bei Annäherung |
+| Laser-Barriere | Gepulster Strahl von Decke zu Boden, zerstört Projektile |

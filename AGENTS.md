@@ -145,6 +145,43 @@ any      ──hp = 0──→ dying (0.5 s Blinken, dann entfernt)
 
 ---
 
+## Agent: MissileLauncher (Raketenwerfer)
+
+### Eigenschaften
+
+| Feld | Wert |
+|---|---|
+| Sprite | Kreis r=10 px (gefüllt), weiß; pulsiert im Alert-Zustand |
+| HP | 3 |
+| Alert-Radius | 200 px |
+| Feuer-Radius | 150 px |
+| Cooldown | 10 s nach Abschuss |
+
+### Zustandsmaschine
+
+```
+idle ──dist < 200px──→ alert (pulsiert)
+alert ──dist < 150px──→ feuert Rakete → cooldown (10 s)
+cooldown ──timer = 0──→ idle
+any ──hp = 0──→ dying
+```
+
+### Verhalten
+
+- Stationär, keine Bewegung.
+- **alert:** Radius oszilliert via `sin(pulseTimer * 8) * 3`.
+- **cooldown:** Innerer Ring (dunkelgrau) sichtbar.
+- Feuert genau eine Rakete pro Aktivierung aus der eigenen Position.
+
+### Interaktionen
+
+| Mit | Effekt |
+|---|---|
+| Spieler-Projektil | −1 HP |
+| Spieler (Kollision) | kein direkter Schaden (Rakete übernimmt) |
+
+---
+
 ## Agent: Missile (Heimsuchungsrakete)
 
 ### Eigenschaften
@@ -189,33 +226,37 @@ EXPLODING ──animation done (0.4 s)──→ alive = false
 
 | Feld | Wert |
 |---|---|
-| Sprite | Linie zwischen zwei Emitter-Rechtecken (8×8 px), Glow, Farbe Cyan `#00ffff` |
+| Sprite | Linie zwischen zwei Emitter-Rechtecken (8×8 px), Glow, Farbe Weiß `#ffffff` |
 | Emitter-HP | 4 (jeder Emitter einzeln zerstörbar) |
-| Score bei Zerstörung | 200 (beide Emitter) |
-| Takt | 0.8 s an / 0.4 s aus |
-| Schaden | 2 HP/frame (nur wenn aktiv/an) |
+| Takt | 0.5–2 s an / 1–5 s aus (zufällig, gestaffelt) |
+| Schaden | 0.01/frame direkt (kein Unverwundbarkeits-Fenster) |
 
 ### Zustandsmaschine
 
 ```
-ON ──timer──→ OFF
-OFF ──timer──→ ON
-any emitter ──hp=0──→ DISABLED (Strahl permanent aus)
+on ──timer──→ off
+off ──timer──→ on
+any emitter ──hp=0──→ disabled (Strahl permanent aus)
 ```
 
 ### Verhalten
 
-- Zwei Emitter an festen Positionen (Wand-zu-Wand oder Gerät-zu-Gerät).
-- Strahl ist eine Linie mit `shadowBlur = 12`.
-- Schaden wird pro Frame geprüft, solange Spieler-Kollisionsbox den Strahl schneidet und Zustand `ON`.
-- Wenn ein Emitter zerstört wird → Barriere dauerhaft deaktiviert.
+- Emitter A an Decke, Emitter B am Boden — auch diagonal (bis ±250 px versetzt).
+- Strahl ist eine Linie mit `shadowBlur = 12`, weiß.
+- Schaden pro Frame solange Spieler-Kreis den Strahl schneidet und Zustand `on`.
+- Zerstört Spieler-Projektile, Gegner-Projektile und Raketen beim Kontakt mit dem Strahl.
+- Ein zerstörter Emitter → Barriere dauerhaft deaktiviert.
+- 0–2 Barrieren pro Raum (nicht in treasury/reactor).
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler (Kontakt, ON) | -2 HP/frame |
-| Spieler-Projektil (Emitter) | -1 HP Emitter |
+| Spieler (Kontakt, on) | −0.01 energy/frame |
+| Spieler-Projektil (Strahl, on) | Projektil zerstört |
+| Spieler-Projektil (Emitter) | −1 HP Emitter |
+| Gegner-Projektil (Strahl, on) | Projektil zerstört |
+| Rakete (Strahl, on) | Rakete explodiert |
 
 ---
 
