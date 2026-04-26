@@ -215,12 +215,31 @@ const stateUpdaters = {
 
 // ─── Render-Hilfsfunktionen ───────────────────────────────────────────────────
 
+function drawParallaxLayer(ctx, room, inset, color) {
+  ctx.fillStyle = color;
+
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(room.width, 0);
+  for (let i = room.ceilingPoints.length - 1; i >= 0; i--) {
+    ctx.lineTo(room.ceilingPoints[i].x, room.ceilingPoints[i].y + inset);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(0, room.height);
+  ctx.lineTo(room.width, room.height);
+  for (let i = room.floorPoints.length - 1; i >= 0; i--) {
+    ctx.lineTo(room.floorPoints[i].x, room.floorPoints[i].y - inset);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawRoom(ctx, room) {
   ctx.fillStyle = '#000000';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 20;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 5;
 
   ctx.beginPath();
   ctx.moveTo(0, 0);
@@ -312,6 +331,18 @@ function renderPlaying(ctx) {
 
   const shakeX = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
   const shakeY = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
+
+  ctx.save();
+  ctx.filter = 'blur(40px)';
+  ctx.translate(-game.camX * 0.4 + shakeX, -game.camY * 0.4 + shakeY);
+  drawParallaxLayer(ctx, room, 30, 'rgba(0,0,0,0.45)');
+  ctx.restore();
+
+  ctx.save();
+  ctx.filter = 'blur(80px)';
+  ctx.translate(-game.camX * 0.8 + shakeX, -game.camY * 0.8 + shakeY);
+  drawParallaxLayer(ctx, room, 60, 'rgba(0,0,0,0.8)');
+  ctx.restore();
 
   ctx.save();
   ctx.translate(-game.camX + shakeX, -game.camY + shakeY);
