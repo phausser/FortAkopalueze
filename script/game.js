@@ -42,7 +42,7 @@ function initLevel(level) {
   }, level + 1);
   game.rooms.at(-1).pickups = [];
   spawnReactor(game.rooms.at(-1));
-  spawnSurvivorsForLevel(game.rooms, game.seed);
+  spawnSurvivorsForLevel(game.rooms, game.seed, level);
   game.currentRoomIndex = 0;
   game.camX = 0;
   game.camY = 0;

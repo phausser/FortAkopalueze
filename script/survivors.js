@@ -3,19 +3,18 @@ import { ship } from './ship.js';
 import { addScore } from './score.js';
 import { spawnImpactParticles } from './particles.js';
 
-const SURVIVOR_COUNT = 5;
 const COLLECT_DIST = 35;
 const HEAD_R = 5;
 const BODY_W = 14;
 const BODY_H = Math.round(BODY_W * Math.sqrt(3) / 2);
 
-export function spawnSurvivorsForLevel(rooms, seed) {
+export function spawnSurvivorsForLevel(rooms, seed, count) {
   for (const room of rooms) room.survivors = [];
   const rng = makePRNG(seed ^ 0xFACE);
   const eligible = rooms.slice(0, -1);
   if (eligible.length === 0) return;
 
-  for (let i = 0; i < SURVIVOR_COUNT; i++) {
+  for (let i = 0; i < count; i++) {
     for (let attempt = 0; attempt < 30; attempt++) {
       const room = eligible[Math.floor(rng() * eligible.length)];
       const x = room.width * lerp(0.1, 0.9, rng());
