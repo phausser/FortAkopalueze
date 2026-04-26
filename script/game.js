@@ -1,6 +1,6 @@
 import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State } from './constants.js';
 import { input } from './input.js';
-import { resources } from './resources.js';
+import { resources, resetResources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
 import { generateLevel } from './level.js';
 import { spawnEnemiesForRoom } from './enemies.js';
@@ -25,33 +25,51 @@ const game = {
   camX: 0,
   camY: 0,
   seed: 0,
+  level: 1,
+  levelIntroTimer: 0,
 
   setState(newState) { this.state = newState; },
 };
+
+// ─── Level-Initialisierung ────────────────────────────────────────────────────
+
+function initLevel(level) {
+  game.seed = Date.now();
+  game.rooms = generateLevel(game.seed, (room, rng) => {
+    spawnEnemiesForRoom(room, rng);
+    spawnLasersForRoom(room, rng);
+    spawnPickupsForRoom(room, rng);
+  }, level + 1);
+  game.rooms.at(-1).pickups = [];
+  spawnReactor(game.rooms.at(-1));
+  spawnSurvivorsForLevel(game.rooms, game.seed);
+  game.currentRoomIndex = 0;
+  game.camX = 0;
+  game.camY = 0;
+  projectiles.length = 0;
+  particles.length = 0;
+  enemyProjectiles.length = 0;
+  missiles.length = 0;
+  resetShip(game.rooms[0]);
+  resetResources();
+  startMusic();
+}
 
 // ─── Update-Logik pro Zustand ─────────────────────────────────────────────────
 
 function updateMenu() {
   if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
-    game.seed = Date.now();
-    game.rooms = generateLevel(game.seed, (room, rng) => {
-      spawnEnemiesForRoom(room, rng);
-      spawnLasersForRoom(room, rng);
-      spawnPickupsForRoom(room, rng);
-    });
-    game.rooms.at(-1).pickups = [];
-    spawnReactor(game.rooms.at(-1));
-    spawnSurvivorsForLevel(game.rooms, game.seed);
-    game.currentRoomIndex = 0;
-    game.camX = 0;
-    game.camY = 0;
-    projectiles.length = 0;
-    particles.length = 0;
-    enemyProjectiles.length = 0;
-    missiles.length = 0;
-    resetShip(game.rooms[0]);
+    game.level = 1;
     resetScore();
-    startMusic();
+    initLevel(game.level);
+    game.levelIntroTimer = 2.5;
+    game.setState(State.LEVEL_INTRO);
+  }
+}
+
+function updateLevelIntro(dt) {
+  game.levelIntroTimer -= dt;
+  if (game.levelIntroTimer <= 0 || input.isJustPressed('Enter') || input.isJustPressed('Space')) {
     game.setState(State.PLAYING);
   }
 }
@@ -157,11 +175,17 @@ function updateDead() {
 function updateEscape() { }
 
 function updateWin() {
-  if (input.isJustPressed('Enter') || input.isJustPressed('Space')) game.setState(State.MENU);
+  if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
+    game.level++;
+    initLevel(game.level);
+    game.levelIntroTimer = 2.5;
+    game.setState(State.LEVEL_INTRO);
+  }
 }
 
 const stateUpdaters = {
   [State.MENU]: updateMenu,
+  [State.LEVEL_INTRO]: updateLevelIntro,
   [State.PLAYING]: updatePlaying,
   [State.DEAD]: updateDead,
   [State.ESCAPE]: updateEscape,
@@ -286,6 +310,17 @@ function renderPlaying(ctx) {
   drawHUD(ctx);
 }
 
+function renderLevelIntro(ctx) {
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 64px "Michroma", sans-serif';
+  ctx.fillText(`Level ${game.level}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+  ctx.font = '20px "Michroma", sans-serif';
+  ctx.fillText('Zerstöre den Reaktor', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+}
+
 function renderDead(ctx) {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -303,13 +338,14 @@ function renderWin(ctx) {
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('REAKTOR VERNICHTET', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+  ctx.fillText('Reaktor zerstört', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
   ctx.font = '18px "Michroma", sans-serif';
-  ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+  ctx.fillText(`Mit ENTER oder LEERTASTE zum Level ${game.level + 1}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 const stateRenderers = {
   [State.MENU]: renderMenu,
+  [State.LEVEL_INTRO]: renderLevelIntro,
   [State.PLAYING]: renderPlaying,
   [State.DEAD]: renderDead,
   [State.ESCAPE]: renderPlaying,

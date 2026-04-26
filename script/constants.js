@@ -81,6 +81,7 @@ export const PICKUP_AMOUNT = 0.25;
 
 export const State = {
   MENU: 'menu',
+  LEVEL_INTRO: 'level_intro',
   PLAYING: 'playing',
   DEAD: 'dead',
   ESCAPE: 'escape',

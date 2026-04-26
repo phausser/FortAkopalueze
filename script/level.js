@@ -106,8 +106,7 @@ function generateRoom(index, totalRooms, rng, spawnEnemiesForRoom) {
   return room;
 }
 
-export function generateLevel(seed, spawnEnemiesForRoom) {
+export function generateLevel(seed, spawnEnemiesForRoom, roomCount) {
   const rng = makePRNG(seed);
-  const totalRooms = ROOM_COUNT_MIN + Math.floor(rng() * (ROOM_COUNT_MAX - ROOM_COUNT_MIN + 1));
-  return Array.from({ length: totalRooms }, (_, i) => generateRoom(i, totalRooms, rng, spawnEnemiesForRoom));
+  return Array.from({ length: roomCount }, (_, i) => generateRoom(i, roomCount, rng, spawnEnemiesForRoom));
 }
