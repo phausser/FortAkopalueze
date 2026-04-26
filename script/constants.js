@@ -62,6 +62,14 @@ export const LASER_EMITTER_HP = 4;
 export const LASER_EMITTER_R = 6;      // hit radius for emitter
 export const LASER_COLOR = '#ffffff';
 
+export const REACTOR_CORE_R        = 22;
+export const REACTOR_HP            = 25;
+export const REACTOR_ORBIT_R       = 72;
+export const REACTOR_EXPLODE_TIME  = 2.5;
+export const REACTOR_SHAKE_HIT     = 6;
+export const REACTOR_SHAKE_EXPLODE = 20;
+export const REACTOR_ELECTRON_R    = 4;
+
 export const PICKUP_RADIUS = 6;
 export const PICKUP_COLLECT_DIST = 22;
 export const PICKUP_AMOUNT = 0.25;

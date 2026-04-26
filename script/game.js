@@ -10,6 +10,7 @@ import { missiles, updateMissiles, drawMissiles } from './missiles.js';
 import { enemyProjectiles, updateEnemies, updateEnemyProjectiles, drawEnemies, drawEnemyProjectiles } from './enemies.js';
 import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projectiles.js';
 import { spawnPickupsForRoom, updatePickups, drawPickups } from './pickups.js';
+import { spawnReactor, updateReactor, drawReactor, isReactorDestroyed, screenShake } from './reactor.js';
 
 // ─── Spielstand ───────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ function updateMenu() {
       spawnPickupsForRoom(room, rng);
     });
     game.rooms.at(-1).pickups = [];
+    spawnReactor(game.rooms[0]);
     game.currentRoomIndex = 0;
     game.camX = 0;
     game.camY = 0;
@@ -111,6 +113,7 @@ function updatePlaying(dt) {
     updateMissiles(room, dt);
     updateLasers(room, dt);
     updatePickups(room, dt);
+    updateReactor(room, dt);
   }
   updateParticles(dt);
   handleRoomTransition(room);
@@ -122,6 +125,8 @@ function updatePlaying(dt) {
   }
 
   if (resources.energy <= 0) { game.setState(State.DEAD); return; }
+
+  if (isReactorDestroyed(game.rooms.at(-1))) { game.setState(State.WIN); return; }
 
   if (input.isJustPressed('Escape')) game.setState(State.MENU);
 }
@@ -234,9 +239,13 @@ function renderPlaying(ctx) {
   ctx.fillStyle = room.bgColor;
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+  const shakeX = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
+  const shakeY = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
+
   ctx.save();
-  ctx.translate(-game.camX, -game.camY);
+  ctx.translate(-game.camX + shakeX, -game.camY + shakeY);
   drawRoom(ctx, room);
+  drawReactor(ctx, room);
   drawPickups(ctx, room);
   drawEnemies(ctx, room);
   drawLasersForRoom(ctx, room);
@@ -267,7 +276,7 @@ function renderWin(ctx) {
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('ENTKOMMEN!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+  ctx.fillText('REAKTOR VERNICHTET', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
   ctx.font = '18px "Michroma", sans-serif';
   ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
