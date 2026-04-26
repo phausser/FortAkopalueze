@@ -44,6 +44,7 @@ MENU → PLAYING → ESCAPE → WIN
 | Taste | Aktion |
 |---|---|
 | `←` / `→` | Schiff rotieren |
+| `Shift` + `←` / `→` | Gleiten senkrecht zur Blickrichtung (Strafe, 180 px/s) |
 | `↑` | Schub in Blickrichtung |
 | `↓` | Schub entgegen Blickrichtung |
 | `Space` | Schießen (Richtung: Schiffspitze) |
@@ -240,16 +241,12 @@ Alle Sounds synthetisch generiert, keine externen Dateien.
 
 ## Scoring
 
+Score wird als 6-stellige Zahl oben rechts im HUD angezeigt (`000000`).
+
 | Ereignis | Punkte |
 |---|---|
-| Feind-Hubschrauber zerstört | 100 |
-| Wandgeschütz zerstört | 150 |
-| Rakete abgeschossen | 75 |
-| Laser-Emitter zerstört | 200 |
-| Reaktor zerstört | 1000 |
-| Raum verlassen (mit Gegnern besiegt) | 50 × Raum-Nummer |
-| Escape erfolgreich | 500 + `verbleibende Sekunden × 30` |
-| Ressourcen-Bonus (bei Win) | HP × 5 + Fuel × 3 + Ammo × 2 |
+| Feind zerstört (alle Typen) | 100 |
+| Reaktor zerstört | 5000 |
 
 ---
 

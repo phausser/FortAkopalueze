@@ -33,6 +33,7 @@ Dann `http://localhost:8000` im Browser öffnen.
 | `↑` | Schub vorwärts |
 | `↓` | Schub rückwärts |
 | `←` / `→` | Rotieren |
+| `Shift` + `←` / `→` | Gleiten (Strafe) |
 | `Leertaste` | Schießen |
 | `ESC` | Pause / Menü |
 

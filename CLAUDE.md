@@ -13,6 +13,7 @@ Lokaler Dev-Server nötig (z.B. `python3 -m http.server`), da ES Modules `file:/
 | `constants.js` | Alle Konstanten + `State`-Enum |
 | `input.js` | Tastatur-Handler (`input.isHeld`, `input.isJustPressed`) |
 | `resources.js` | `resources.energy/.shield/.ammo` (0.0–1.0) |
+| `score.js` | `score.value`, `resetScore()`, `addScore(amount)` |
 | `particles.js` | Partikel-Array, `spawnImpactParticles`, update/draw |
 | `level.js` | PRNG, `interpolateWall`, `lerp`, `generateLevel(seed, spawnFn)` |
 | `ship.js` | `ship`-Objekt, `resetShip`, `applyDamage`, Kollision, `drawShip` |

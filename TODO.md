@@ -71,7 +71,8 @@
   Drei Stufen (Easy/Normal/Hard): Feind-Anzahl, Feind-Schussrate, Fuel-Verbrauch, Munition variieren. Extras seltener auf Hard. Reaktor-HP höher. Werte in einer Konfig-Tabelle zentralisieren für einfaches Tuning.
 
 - [ ] **21. Highscore & LocalStorage**
-  Top-5-Scores pro Schwierigkeitsgrad im LocalStorage speichern. Score berechnet sich aus: Räume durchquert, Feinde zerstört, verbleibende Ressourcen, Escape-Zeit. Highscore-Tabelle im Menü anzeigen.
+  Top-5-Scores im LocalStorage speichern. Highscore-Tabelle im Menü anzeigen.
+  Score-Grundsystem implementiert: `score.js`, +100/Feind, +5000/Reaktor, 6-stellige HUD-Anzeige oben rechts.
 
 - [ ] **22. Mobile-/Gamepad-Support** *(optional)*
   Gamepad API für Controller-Support. On-Screen-Buttons für Touch-Geräte (vier Richtungen + Feuer). Canvas skaliert responsiv per CSS.

@@ -50,7 +50,7 @@ DYING ──animation done──→ [State: DEAD]
 
 ### Verhalten
 
-- **Bewegung:** `←`/`→` rotiert das Schiff, `↑`/`↓` addiert Schub in/gegen Blickrichtung. Geschwindigkeit wird dt-basiert gedämpft (`SHIP_DAMPING = 0.99`). Keine Gravitation.
+- **Bewegung:** `←`/`→` rotiert das Schiff, `↑`/`↓` addiert Schub in/gegen Blickrichtung. `Shift`+`←`/`→` gleitet senkrecht zur Blickrichtung (Strafe, 180 px/s, keine Rotation). Geschwindigkeit wird dt-basiert gedämpft (`SHIP_DAMPING = 0.99`). Keine Gravitation.
 - **Schießen:** `Space` feuert Projektil aus der Schiffspitze in Blickrichtung. Feuerrate: 5/s (`FIRE_COOLDOWN = 0.2 s`). Kostet 1/80 Munition.
 - **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Schild −0.05 pro Wandkontakt, 0.5 s Unverwundbarkeit (Schiff blinkt).
 - **Energie-Verbrauch:** `ENERGY_DRAIN = 0.035/s` solange ↑ oder ↓ gehalten wird.
@@ -268,8 +268,8 @@ any emitter ──hp=0──→ disabled (Strahl permanent aus)
 |---|---|
 | Sprite | 3 konzentrische Hexagone (rotierend), Glow pulsierend, Farbe Blau-Weiß |
 | Größe | ca. 80×80 px |
-| HP | 12 / 20 / 30 (Easy/Normal/Hard) |
-| Score bei Zerstörung | 1000 |
+| HP | 25 |
+| Score bei Zerstörung | 5000 |
 
 ### Zustandsmaschine
 
