@@ -1,4 +1,4 @@
-import { SHIP_RADIUS, PROJECTILE_SPEED, PROJECTILE_LENGTH, FIRE_COOLDOWN, LAUNCHER_RADIUS, ENEMY_HALF } from './constants.js';
+import { SHIP_RADIUS, PROJECTILE_SPEED, PROJECTILE_LENGTH, FIRE_COOLDOWN, MINE_RADIUS, ENEMY_HALF } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { resources } from './resources.js';
 import { interpolateWall } from './level.js';
@@ -54,7 +54,7 @@ export function updateProjectiles(room, dt) {
     if (!hit) {
       for (const e of room.enemies) {
         if (e.state === 'dying') continue;
-        const hitRadius = e.kind === 'turret' ? 10 : e.kind === 'launcher' ? LAUNCHER_RADIUS : ENEMY_HALF;
+        const hitRadius = e.kind === 'turret' ? 10 : e.kind === 'mine' ? MINE_RADIUS : ENEMY_HALF;
         const edx = p.x - e.x, edy = p.y - e.y;
         if (edx * edx + edy * edy < hitRadius * hitRadius) {
           e.hp--;

@@ -43,11 +43,12 @@ export const MISSILE_SPLASH_DAMAGE = 0.2;
 export const MISSILE_EXPLODE_TIME = 0.4;
 export const MISSILE_TRAIL_INTERVAL = 1 / 30;
 
-export const LAUNCHER_RADIUS = 10;
-export const LAUNCHER_HP = 3;
-export const LAUNCHER_ALERT_DIST = 200;
-export const LAUNCHER_FIRE_DIST = 150;
-export const LAUNCHER_COOLDOWN = 10;
+export const MINE_RADIUS = 10;
+export const MINE_HP = 3;
+export const MINE_ALERT_DIST = 150;
+export const MINE_TRIGGER_DIST = 80;
+export const MINE_EXPLOSION_RADIUS = 100;
+export const MINE_DAMAGE_MAX = 0.5;
 
 export const LASER_ON_MIN = 0.5;
 export const LASER_ON_MAX = 2.0;

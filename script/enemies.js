@@ -3,12 +3,12 @@ import {
   ENEMY_HALF, ENEMY_PATROL_SPD, ENEMY_CHASE_SPD, ENEMY_CHASE_DIST,
   ENEMY_FLEE_DIST, ENEMY_MIN_DIST, ENEMY_FIRE_RATE, ENEMY_PROJ_SPEED, ENEMY_DMG,
   TURRET_HP, TURRET_FIRE_RATE, TURRET_ROT_SPEED, TURRET_RANGE,
-  LAUNCHER_RADIUS, LAUNCHER_HP, LAUNCHER_ALERT_DIST, LAUNCHER_FIRE_DIST, LAUNCHER_COOLDOWN,
+  MINE_RADIUS, MINE_HP, MINE_ALERT_DIST, MINE_TRIGGER_DIST, MINE_EXPLOSION_RADIUS, MINE_DAMAGE_MAX,
 } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { interpolateWall, lerp } from './level.js';
 import { spawnMissile } from './missiles.js';
-import { spawnImpactParticles } from './particles.js';
+import { particles, spawnImpactParticles } from './particles.js';
 
 export const enemyProjectiles = [];
 
@@ -47,20 +47,18 @@ export function spawnEnemiesForRoom(room, rng) {
   for (let i = 0; i < count; i++) {
     const roll = rng();
     if (roll < 0.2) {
-      // Launcher
+      // Mine
       for (let attempt = 0; attempt < 12; attempt++) {
         const x = room.width * lerp(0.2, 0.8, rng());
         const ceilY = interpolateWall(room.ceilingPoints, x);
         const floorY = interpolateWall(room.floorPoints, x);
-        if (floorY - ceilY < LAUNCHER_RADIUS * 2 + 40) continue;
-        const y = lerp(ceilY + LAUNCHER_RADIUS + 10, floorY - LAUNCHER_RADIUS - 10, rng());
+        if (floorY - ceilY < MINE_RADIUS * 2 + 40) continue;
+        const y = lerp(ceilY + MINE_RADIUS + 10, floorY - MINE_RADIUS - 10, rng());
         room.enemies.push({
-          kind: 'launcher',
+          kind: 'mine',
           x, y,
-          hp: LAUNCHER_HP,
+          hp: MINE_HP,
           state: 'idle',
-          cooldownTimer: 0,
-          blinkPhase: 0,
           pulseTimer: 0,
           dyingTimer: 0,
         });
@@ -170,29 +168,32 @@ function updateTurret(e, room, dt) {
   }
 }
 
-function updateLauncher(e, dt) {
-  e.pulseTimer += dt;
-
-  if (e.state === 'cooldown') {
-    e.cooldownTimer -= dt;
-    if (e.cooldownTimer <= 0) {
-      e.state = 'idle';
-    } else {
-      const t = 1 - (e.cooldownTimer / LAUNCHER_COOLDOWN);
-      e.blinkPhase += (2 + t * 8) * dt;
-    }
-    return;
+function explodeMine(e) {
+  spawnImpactParticles(e.x, e.y);
+  for (let i = 0; i < 200; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = 60 + Math.random() * 200;
+    particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 0.6, maxLife: 0.6 });
   }
-  e.blinkPhase = 0;
+  const dx = ship.x - e.x, dy = ship.y - e.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < MINE_EXPLOSION_RADIUS) {
+    const damage = MINE_DAMAGE_MAX * (1 - dist / MINE_EXPLOSION_RADIUS);
+    applyDamage(damage);
+  }
+  e.state = 'dying';
+  e.dyingTimer = 0.001;
+}
+
+function updateMine(e, dt) {
+  e.pulseTimer += dt;
 
   const dx = ship.x - e.x, dy = ship.y - e.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
 
-  if (dist < LAUNCHER_FIRE_DIST) {
-    spawnMissile(e.x, e.y);
-    e.state = 'cooldown';
-    e.cooldownTimer = LAUNCHER_COOLDOWN;
-  } else if (dist < LAUNCHER_ALERT_DIST) {
+  if (dist < MINE_TRIGGER_DIST) {
+    explodeMine(e);
+  } else if (dist < MINE_ALERT_DIST) {
     e.state = 'alert';
   } else {
     e.state = 'idle';
@@ -211,8 +212,8 @@ export function updateEnemies(room, dt) {
 
     if (e.kind === 'turret') {
       updateTurret(e, room, dt);
-    } else if (e.kind === 'launcher') {
-      updateLauncher(e, dt);
+    } else if (e.kind === 'mine') {
+      updateMine(e, dt);
     } else {
       updateHelicopter(e, room, dt);
     }
@@ -251,9 +252,6 @@ export function drawEnemies(ctx, room) {
   const S = ENEMY_HALF * 2;
   for (const e of room.enemies) {
     if (e.state === 'dying' && Math.floor(e.dyingTimer * 14) % 2 === 0) continue;
-    if (e.kind === 'launcher' && e.state === 'cooldown') {
-      if (Math.sin(e.blinkPhase * Math.PI * 2) <= 0) continue;
-    }
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#ffffff';
 
@@ -274,10 +272,10 @@ export function drawEnemies(ctx, room) {
       ctx.moveTo(e.x, e.y + apexOffset);
       ctx.lineTo(e.x + Math.cos(e.angle) * 13, e.y + apexOffset + Math.sin(e.angle) * 13);
       ctx.stroke();
-    } else if (e.kind === 'launcher') {
+    } else if (e.kind === 'mine') {
       const pulse = e.state === 'alert'
-        ? LAUNCHER_RADIUS + Math.sin(e.pulseTimer * 8) * 3
-        : LAUNCHER_RADIUS;
+        ? MINE_RADIUS + Math.sin(e.pulseTimer * 8) * 3
+        : MINE_RADIUS;
       ctx.beginPath();
       ctx.arc(e.x, e.y, pulse, 0, Math.PI * 2);
       ctx.fill();
