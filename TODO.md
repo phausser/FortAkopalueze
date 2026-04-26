@@ -47,8 +47,8 @@
 - [x] **13. Extras / Power-ups**
   Drei Typen: Energie-Kugel (blau), Schild-Kugel (grün), Munitions-Kugel (gelb). Erscheinen zufällig in Räumen (0–2, nicht im letzten Raum). Aufsammeln durch Überfahren (+0.25 pro Pickup). Geometrisch als Kugeln mit Halbmond-Schatten und Glanzpunkt.
 
-- [ ] **14. Reaktor-Raum & Zerstörungssequenz**
-  Letzter Raum enthält zentralen Reaktor (großes geometrisches Objekt, pulsiert). Benötigt mehrere Treffer zum Zerstören. Nach Zerstörung: dramatische Explosion, Alarm-Effekt (Bildschirm-Flash, Farbe wechselt zu Rot), 30-Sekunden-Countdown startet.
+- [x] **14. Reaktor-Raum & Zerstörungssequenz**
+  Letzter Raum enthält zentralen Reaktor (großes geometrisches Objekt, pulsiert). Benötigt mehrere Treffer zum Zerstören. Nach Zerstörung: dramatische Explosion mit Screen-Shake und Partikel-Burst. Win-Screen erscheint nach Ablauf der Explosions-Animation. Reaktorkern-Kontakt tötet den Spieler (~0.5s), Laser tötet ebenfalls in ~0.5s (beide umgehen Shield + Unverwundbarkeit).
 
 - [ ] **15. Escape-Phase: 30-Sekunden-Countdown**
   Countdown läuft, Spieler muss zurück zum Eingangs-Raum (Ausgang markiert, Pfeil-Hinweis). Räume füllen sich mit mehr Gegnern/Hindernissen. Bei 0 Sekunden: Explosion, Game-Over. Bei rechtzeitigem Erreichen: Win-Screen.
