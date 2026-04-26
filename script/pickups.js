@@ -15,7 +15,7 @@ const COLORS = {
 
 export function spawnPickupsForRoom(room, rng) {
   room.pickups = [];
-  const count = Math.floor(rng() * 3);
+  const count = 2 + Math.floor(rng() * 2);
   for (let i = 0; i < count; i++) {
     for (let attempt = 0; attempt < 12; attempt++) {
       const x = room.width * lerp(0.15, 0.85, rng());
@@ -24,7 +24,8 @@ export function spawnPickupsForRoom(room, rng) {
       const margin = PICKUP_RADIUS + 20;
       if (floorY - ceilY < margin * 2 + 20) continue;
       const y = ceilY + margin + rng() * (floorY - ceilY - margin * 2);
-      room.pickups.push({ x, y, kind: KINDS[Math.floor(rng() * 3)] });
+      const kind = i === 0 ? 'energy' : KINDS[Math.floor(rng() * 3)];
+      room.pickups.push({ x, y, kind });
       break;
     }
   }
