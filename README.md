@@ -1,18 +1,18 @@
 # Fort Akopalueze
 
-Ein browserbasiertes 2D-Hubschrauber-Actionspiel im Retro-Style. Du steuerst einen bewaffneten Helikopter durch prozedural generierte Höhlen, kämpfst gegen Wachdrohnen, Geschütztürme, Raketenwerfer und Laser-Barrieren – und musst am Ende den Reaktor zerstören und entkommen, bevor der Countdown abläuft.
+Ein browserbasiertes 2D-Raumschiff-Actionspiel im Retro-Style. Du steuerst ein kleines Raumschiff durch prozedural generierte Höhlen, kämpfst gegen Wachdrohnen, Geschütztürme, Minen und Laser-Barrieren – und musst am Ende den Reaktor zerstören und entkommen.
 
 ## Spielablauf
 
 1. Fliege durch 8–12 Räume und halte Energie, Schild und Munition im Blick
 2. Zerstöre den Reaktor im letzten Raum
-3. Entkome innerhalb von 30 Sekunden zurück zum Eingang
+3. Entkome zurück zum Eingang
 
 ## Technologien
 
 - **HTML5 Canvas** – Rendering, vollständig geometrisch (keine Sprites/Texturen)
 - **Vanilla JavaScript (ES Modules)** – Game-Loop via `requestAnimationFrame`, keine Frameworks
-- **Web Audio API** – Synthetische Soundeffekte ohne externe Dateien *(geplant)*
+- **Web Audio API** – Synthetische Soundeffekte ohne externe Dateien
 - **CSS** – Layout und Vollbild-Skalierung
 - **LocalStorage** – Highscore-Persistenz *(geplant)*
 
@@ -35,15 +35,15 @@ Dann `http://localhost:8000` im Browser öffnen.
 | `←` / `→` | Rotieren |
 | `Shift` + `←` / `→` | Gleiten (Strafe) |
 | `Leertaste` | Schießen |
-| `ESC` | Pause / Menü |
+| `ESC` | Menü |
 
 ## Gegner
 
 | Typ | Verhalten |
 |---|---|
-| Hubschrauber | Patrouilliert, verfolgt und schießt bei Sichtkontakt |
-| Wandgeschütz | Stationär, dreht Lauf zum Spieler, schießt bei freier Sicht |
-| Raketenwerfer | Stationär, feuert Heimsuchungsrakete bei Annäherung |
+| Wachdrohne | Patrouilliert, verfolgt und schießt bei Sichtkontakt |
+| Geschützturm | Stationär, dreht Lauf zum Spieler, schießt bei freier Sicht |
+| Mine | Stationär, explodiert bei Annäherung des Spielers |
 | Laser-Barriere | Gepulster Strahl von Decke zu Boden, zerstört Projektile |
 
 ## Ressourcen
