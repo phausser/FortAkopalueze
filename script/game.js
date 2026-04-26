@@ -137,7 +137,7 @@ function updatePlaying(dt) {
 
   if (resources.energy <= 0) { game.setState(State.DEAD); return; }
 
-  if (isReactorDestroyed(game.rooms.at(-1))) { game.setState(State.WIN); return; }
+  if (isReactorDestroyed(game.rooms[0])) { game.setState(State.WIN); return; }
 
   if (input.isJustPressed('Escape')) game.setState(State.MENU);
 }
