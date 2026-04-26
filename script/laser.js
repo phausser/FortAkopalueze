@@ -103,7 +103,11 @@ export function updateLasers(room, dt) {
 
     // Spieler-Schaden (kein Unverwundbarkeits-Fenster)
     if (distToSegment(ship.x, ship.y, L.ax, L.ay, L.bx, L.by) < SHIP_RADIUS) {
-      resources.energy -= LASER_DAMAGE;
+      if (resources.shield <= 0) {
+        resources.energy = 0;
+      } else {
+        resources.shield = Math.max(0, resources.shield - LASER_DAMAGE);
+      }
     }
 
     // Gegner-Projektile

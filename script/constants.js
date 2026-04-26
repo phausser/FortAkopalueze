@@ -7,6 +7,7 @@ export const SHIP_DAMPING = 0.99;
 export const SHIP_RADIUS = 12;
 export const RESTITUTION = 0.25;
 export const COLLISION_DAMAGE = 0.05;
+export const ENERGY_DRAIN = 0.035;
 export const INVINCIBLE_TIME = 0.5;
 
 export const PROJECTILE_SPEED = 600;

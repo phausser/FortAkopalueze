@@ -1,4 +1,4 @@
-import { CANVAS_HEIGHT, SHIP_RADIUS, RESTITUTION, COLLISION_DAMAGE, INVINCIBLE_TIME } from './constants.js';
+import { CANVAS_HEIGHT, SHIP_RADIUS, RESTITUTION, COLLISION_DAMAGE, INVINCIBLE_TIME, ENERGY_DRAIN } from './constants.js';
 import { resources, resetResources } from './resources.js';
 
 export const ship = {
@@ -24,7 +24,12 @@ export function resetShip(firstRoom) {
 
 export function applyDamage(amount) {
   if (ship.invincibleTimer > 0) return;
-  resources.energy -= amount;
+  if (resources.shield <= 0) {
+    resources.energy = 0;
+    return;
+  }
+  resources.shield -= amount;
+  if (resources.shield < 0) resources.shield = 0;
   ship.invincibleTimer = INVINCIBLE_TIME;
 }
 

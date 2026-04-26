@@ -17,7 +17,7 @@ function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
 }
 
 export function shoot() {
-  if (ship.fireCooldown > 0) return;
+  if (ship.fireCooldown > 0 || resources.ammo <= 0) return;
   resources.ammo -= 1 / 80;
   projectiles.push({
     x: ship.x + Math.cos(ship.angle) * 16,

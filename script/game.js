@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_ROTATION_SPEED, SHIP_DAMPING, State } from './constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State } from './constants.js';
 import { input } from './input.js';
 import { resources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
@@ -52,10 +52,12 @@ function updatePlaying(dt) {
   if (input.isHeld('ArrowUp')) {
     ship.vx += Math.cos(ship.angle) * SHIP_THRUST * dt;
     ship.vy += Math.sin(ship.angle) * SHIP_THRUST * dt;
+    resources.energy = Math.max(0, resources.energy - ENERGY_DRAIN * dt);
   }
   if (input.isHeld('ArrowDown')) {
     ship.vx -= Math.cos(ship.angle) * SHIP_THRUST * dt;
     ship.vy -= Math.sin(ship.angle) * SHIP_THRUST * dt;
+    resources.energy = Math.max(0, resources.energy - ENERGY_DRAIN * dt);
   }
 
   const d = Math.pow(SHIP_DAMPING, dt * 60);
