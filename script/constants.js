@@ -3,6 +3,7 @@ export const CANVAS_HEIGHT = 768;
 
 export const SHIP_ROTATION_SPEED = 3.0;
 export const SHIP_THRUST = 250;
+export const SHIP_STRAFE = 180;
 export const SHIP_DAMPING = 0.99;
 export const SHIP_RADIUS = 12;
 export const RESTITUTION = 0.25;

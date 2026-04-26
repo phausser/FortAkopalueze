@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State } from './constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State } from './constants.js';
 import { input } from './input.js';
 import { resources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
@@ -79,8 +79,17 @@ function handleRoomTransition(room) {
 }
 
 function updatePlaying(dt) {
-  if (input.isHeld('ArrowLeft'))  ship.angle -= SHIP_ROTATION_SPEED * dt;
-  if (input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
+  const shift = input.isHeld('ShiftLeft') || input.isHeld('ShiftRight');
+  if (!shift && input.isHeld('ArrowLeft'))  ship.angle -= SHIP_ROTATION_SPEED * dt;
+  if (!shift && input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
+  if (shift && input.isHeld('ArrowLeft')) {
+    ship.vx += Math.sin(ship.angle) * SHIP_STRAFE * dt;
+    ship.vy -= Math.cos(ship.angle) * SHIP_STRAFE * dt;
+  }
+  if (shift && input.isHeld('ArrowRight')) {
+    ship.vx -= Math.sin(ship.angle) * SHIP_STRAFE * dt;
+    ship.vy += Math.cos(ship.angle) * SHIP_STRAFE * dt;
+  }
 
   if (input.isHeld('ArrowUp')) {
     ship.vx += Math.cos(ship.angle) * SHIP_THRUST * dt;
