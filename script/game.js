@@ -31,6 +31,8 @@ const game = {
   setState(newState) { this.state = newState; },
 };
 
+let thrustTrailTimer = 0;
+
 // ─── Level-Initialisierung ────────────────────────────────────────────────────
 
 function initLevel(level) {
@@ -122,6 +124,25 @@ function updatePlaying(dt) {
     ship.vx += Math.cos(ship.angle) * SHIP_THRUST * dt;
     ship.vy += Math.sin(ship.angle) * SHIP_THRUST * dt;
     resources.energy = Math.max(0, resources.energy - ENERGY_DRAIN * dt);
+
+    thrustTrailTimer -= dt;
+    if (thrustTrailTimer <= 0) {
+      thrustTrailTimer = 0.04;
+      const backX = ship.x - Math.cos(ship.angle) * SHIP_RADIUS;
+      const backY = ship.y - Math.sin(ship.angle) * SHIP_RADIUS;
+      for (let i = 0; i < 3; i++) {
+        const spread = (Math.random() - 0.5) * 0.8;
+        const a = ship.angle + Math.PI + spread;
+        particles.push({
+          x: backX, y: backY,
+          vx: Math.cos(a) * (60 + Math.random() * 60),
+          vy: Math.sin(a) * (60 + Math.random() * 60),
+          life: 0.2, maxLife: 0.2,
+        });
+      }
+    }
+  } else {
+    thrustTrailTimer = 0;
   }
   if (input.isHeld('ArrowDown')) {
     ship.vx -= Math.cos(ship.angle) * SHIP_THRUST * dt;
