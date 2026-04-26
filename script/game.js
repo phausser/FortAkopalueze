@@ -116,6 +116,8 @@ function updatePlaying(dt) {
     game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, room.height - CANVAS_HEIGHT)));
   }
 
+  if (resources.energy <= 0) { game.setState(State.DEAD); return; }
+
   if (input.isJustPressed('Escape')) game.setState(State.MENU);
 }
 
