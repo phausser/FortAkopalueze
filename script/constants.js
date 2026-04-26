@@ -36,6 +36,8 @@ export const TURRET_HP = 3;
 export const TURRET_FIRE_RATE = 3.0;
 export const TURRET_ROT_SPEED = 2.0;
 export const TURRET_RANGE = 380;
+export const TURRET_BODY_R = 9;
+export const TURRET_BARREL_L = 13;
 
 export const MISSILE_SPEED = 120;
 export const MISSILE_TURN_SPEED = Math.PI / 60;

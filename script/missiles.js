@@ -6,6 +6,7 @@ import {
 import { ship, applyDamage } from './ship.js';
 import { particles, spawnImpactParticles } from './particles.js';
 import { interpolateWall } from './level.js';
+import { wrapAngle } from './geometry.js';
 
 export const missiles = [];
 
@@ -51,10 +52,7 @@ export function updateMissiles(room, dt) {
     }
 
     // Kurskorrektur
-    const targetAngle = Math.atan2(ship.y - m.y, ship.x - m.x);
-    let diff = targetAngle - m.angle;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
+    const diff = wrapAngle(Math.atan2(ship.y - m.y, ship.x - m.x) - m.angle);
     const step = MISSILE_TURN_SPEED * dt * 60;
     m.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
     m.vx = Math.cos(m.angle) * MISSILE_SPEED;
@@ -74,10 +72,7 @@ export function updateMissiles(room, dt) {
     }
 
     const dx = m.x - ship.x, dy = m.y - ship.y;
-    if (dx * dx + dy * dy < (SHIP_RADIUS + 6) * (SHIP_RADIUS + 6)) {
-      explode = true;
-      applyDamage(MISSILE_SPLASH_DAMAGE);
-    }
+    if (dx * dx + dy * dy < (SHIP_RADIUS + 6) * (SHIP_RADIUS + 6)) explode = true;
 
     if (explode) {
       spawnImpactParticles(m.x, m.y);

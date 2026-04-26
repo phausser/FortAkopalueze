@@ -48,6 +48,34 @@ function updateMenu() {
   }
 }
 
+function handleRoomTransition(room) {
+  if (!room) return;
+  if (ship.x - SHIP_RADIUS > room.width) {
+    const next = game.currentRoomIndex + 1;
+    if (next < game.rooms.length) {
+      game.currentRoomIndex = next;
+      ship.x = SHIP_RADIUS + 1;
+      ship.y = game.rooms[next].entranceY;
+      game.camX = 0;
+      game.camY = 0;
+      enemyProjectiles.length = 0;
+      missiles.length = 0;
+    }
+  } else if (ship.x + SHIP_RADIUS < 0) {
+    const prev = game.currentRoomIndex - 1;
+    if (prev >= 0) {
+      game.currentRoomIndex = prev;
+      const prevRoom = game.rooms[prev];
+      ship.x = prevRoom.width - SHIP_RADIUS - 1;
+      ship.y = prevRoom.exitY;
+      game.camX = Math.max(0, prevRoom.width - CANVAS_WIDTH);
+      game.camY = 0;
+      enemyProjectiles.length = 0;
+      missiles.length = 0;
+    }
+  }
+}
+
 function updatePlaying(dt) {
   if (input.isHeld('ArrowLeft'))  ship.angle -= SHIP_ROTATION_SPEED * dt;
   if (input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
@@ -85,36 +113,7 @@ function updatePlaying(dt) {
     updatePickups(room, dt);
   }
   updateParticles(dt);
-
-  // Raumwechsel rechts
-  if (room && ship.x - SHIP_RADIUS > room.width) {
-    const next = game.currentRoomIndex + 1;
-    if (next < game.rooms.length) {
-      game.currentRoomIndex = next;
-      const nextRoom = game.rooms[next];
-      ship.x = SHIP_RADIUS + 1;
-      ship.y = nextRoom.entranceY;
-      game.camX = 0;
-      game.camY = 0;
-      enemyProjectiles.length = 0;
-      missiles.length = 0;
-    }
-  }
-
-  // Raumwechsel links
-  if (room && ship.x + SHIP_RADIUS < 0) {
-    const prev = game.currentRoomIndex - 1;
-    if (prev >= 0) {
-      game.currentRoomIndex = prev;
-      const prevRoom = game.rooms[prev];
-      ship.x = prevRoom.width - SHIP_RADIUS - 1;
-      ship.y = prevRoom.exitY;
-      game.camX = Math.max(0, prevRoom.width - CANVAS_WIDTH);
-      game.camY = 0;
-      enemyProjectiles.length = 0;
-      missiles.length = 0;
-    }
-  }
+  handleRoomTransition(room);
 
   // Kamera
   if (room) {

@@ -1,43 +1,14 @@
-import {
-  SHIP_RADIUS,
-  ENEMY_HALF, ENEMY_PATROL_SPD, ENEMY_CHASE_SPD, ENEMY_CHASE_DIST,
-  ENEMY_FLEE_DIST, ENEMY_MIN_DIST, ENEMY_FIRE_RATE, ENEMY_PROJ_SPEED, ENEMY_DMG,
-  TURRET_HP, TURRET_FIRE_RATE, TURRET_ROT_SPEED, TURRET_RANGE,
-  MINE_RADIUS, MINE_HP, MINE_ALERT_DIST, MINE_TRIGGER_DIST, MINE_EXPLOSION_RADIUS, MINE_DAMAGE_MAX,
-} from './constants.js';
+import { SHIP_RADIUS, ENEMY_DMG } from './constants.js';
 import { ship, applyDamage } from './ship.js';
-import { interpolateWall, lerp } from './level.js';
-import { spawnMissile } from './missiles.js';
-import { particles, spawnImpactParticles } from './particles.js';
+import { interpolateWall } from './level.js';
+import { spawnImpactParticles } from './particles.js';
+import { spawnHelicopter, updateHelicopter, drawHelicopter } from './helicopter.js';
+import { spawnTurret, updateTurret, drawTurret } from './turret.js';
+import { spawnMine, updateMine, drawMine } from './mine.js';
 
 export const enemyProjectiles = [];
 
-export function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
-  const d1x = bx - ax, d1y = by - ay;
-  const d2x = dx - cx, d2y = dy - cy;
-  const cross = d1x * d2y - d1y * d2x;
-  if (Math.abs(cross) < 0.0001) return false;
-  const t = ((cx - ax) * d2y - (cy - ay) * d2x) / cross;
-  const u = ((cx - ax) * d1y - (cy - ay) * d1x) / cross;
-  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
-}
-
-export function hasLineOfSight(room, x1, y1, x2, y2) {
-  for (let i = 0; i < room.ceilingPoints.length - 1; i++) {
-    const a = room.ceilingPoints[i], b = room.ceilingPoints[i + 1];
-    if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return false;
-  }
-  for (let i = 0; i < room.floorPoints.length - 1; i++) {
-    const a = room.floorPoints[i], b = room.floorPoints[i + 1];
-    if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return false;
-  }
-  for (const obs of room.obstacles) {
-    const tipY = obs.kind === 'stalactite' ? obs.baseY + obs.len : obs.baseY - obs.len;
-    if (segmentsIntersect(x1, y1, x2, y2, obs.x - obs.w / 2, obs.baseY, obs.x, tipY)) return false;
-    if (segmentsIntersect(x1, y1, x2, y2, obs.x + obs.w / 2, obs.baseY, obs.x, tipY)) return false;
-  }
-  return true;
-}
+export { segmentsIntersect, hasLineOfSight } from './geometry.js';
 
 export function spawnEnemiesForRoom(room, rng) {
   room.enemies = [];
@@ -46,177 +17,24 @@ export function spawnEnemiesForRoom(room, rng) {
   const count = 1 + Math.floor(rng() * 3);
   for (let i = 0; i < count; i++) {
     const roll = rng();
-    if (roll < 0.2) {
-      // Mine
-      for (let attempt = 0; attempt < 12; attempt++) {
-        const x = room.width * lerp(0.2, 0.8, rng());
-        const ceilY = interpolateWall(room.ceilingPoints, x);
-        const floorY = interpolateWall(room.floorPoints, x);
-        if (floorY - ceilY < MINE_RADIUS * 2 + 40) continue;
-        const y = lerp(ceilY + MINE_RADIUS + 10, floorY - MINE_RADIUS - 10, rng());
-        room.enemies.push({
-          kind: 'mine',
-          x, y,
-          hp: MINE_HP,
-          state: 'idle',
-          pulseTimer: 0,
-          dyingTimer: 0,
-        });
-        break;
-      }
-    } else if (roll < 0.55) {
-      // Turret
-      const x = room.width * lerp(0.15, 0.85, rng());
-      const onFloor = rng() < 0.5;
-      const wallY = onFloor
-        ? interpolateWall(room.floorPoints, x)
-        : interpolateWall(room.ceilingPoints, x);
-      room.enemies.push({
-        kind: 'turret',
-        x,
-        y: wallY,
-        mount: onFloor ? 'floor' : 'ceiling',
-        angle: onFloor ? -Math.PI / 2 : Math.PI / 2,
-        hp: TURRET_HP,
-        state: 'idle',
-        fireCooldown: rng() * TURRET_FIRE_RATE,
-        dyingTimer: 0,
-      });
-    } else {
-      // Helicopter
-      for (let attempt = 0; attempt < 12; attempt++) {
-        const x = room.width * lerp(0.2, 0.8, rng());
-        const ceilY = interpolateWall(room.ceilingPoints, x);
-        const floorY = interpolateWall(room.floorPoints, x);
-        if (floorY - ceilY < ENEMY_HALF * 2 + 40) continue;
-        const y = lerp(ceilY + ENEMY_HALF + 10, floorY - ENEMY_HALF - 10, rng());
-        room.enemies.push({
-          kind: 'helicopter',
-          x, y,
-          vx: (rng() < 0.5 ? 1 : -1) * ENEMY_PATROL_SPD,
-          vy: 0,
-          hp: 2,
-          state: 'patrol',
-          fireCooldown: rng() * ENEMY_FIRE_RATE,
-          dyingTimer: 0,
-        });
-        break;
-      }
-    }
-  }
-}
-
-function updateHelicopter(e, room, dt) {
-  const dx = ship.x - e.x;
-  const dy = ship.y - e.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (e.state === 'patrol' && dist < ENEMY_CHASE_DIST) e.state = 'chase';
-  if (e.state === 'chase' && dist > ENEMY_FLEE_DIST) e.state = 'patrol';
-
-  if (e.state === 'patrol') {
-    e.x += e.vx * dt;
-    if (e.x < ENEMY_HALF + 20 || e.x > room.width - ENEMY_HALF - 20) e.vx = -e.vx;
-  } else {
-    if (dist > ENEMY_MIN_DIST) {
-      e.x += (dx / dist) * ENEMY_CHASE_SPD * dt;
-      e.y += (dy / dist) * ENEMY_CHASE_SPD * dt;
-    }
-    e.fireCooldown -= dt;
-    if (e.fireCooldown <= 0) {
-      e.fireCooldown = ENEMY_FIRE_RATE;
-      const angle = Math.atan2(dy, dx);
-      enemyProjectiles.push({ x: e.x, y: e.y, vx: Math.cos(angle) * ENEMY_PROJ_SPEED, vy: Math.sin(angle) * ENEMY_PROJ_SPEED });
-    }
-  }
-
-  const cx = Math.max(0, Math.min(room.width, e.x));
-  e.y = Math.max(interpolateWall(room.ceilingPoints, cx) + ENEMY_HALF + 2,
-    Math.min(interpolateWall(room.floorPoints, cx) - ENEMY_HALF - 2, e.y));
-
-  if (dist < SHIP_RADIUS + ENEMY_HALF) applyDamage(ENEMY_DMG);
-}
-
-function updateTurret(e, room, dt) {
-  const dx = ship.x - e.x;
-  const dy = ship.y - e.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist > TURRET_RANGE) { e.state = 'idle'; return; }
-
-  e.state = 'tracking';
-
-  const targetAngle = Math.atan2(dy, dx);
-  let diff = targetAngle - e.angle;
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
-  const step = TURRET_ROT_SPEED * dt;
-  e.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
-
-  if (e.mount === 'floor') e.angle = Math.max(-Math.PI, Math.min(0, e.angle));
-  if (e.mount === 'ceiling') e.angle = Math.max(0, Math.min(Math.PI, e.angle));
-
-  e.fireCooldown -= dt;
-  if (e.fireCooldown <= 0) {
-    e.fireCooldown = TURRET_FIRE_RATE;
-    const apexY = e.y + (e.mount === 'floor' ? -9 : 9);
-    const tipX = e.x + Math.cos(e.angle) * 13;
-    const tipY = apexY + Math.sin(e.angle) * 13;
-    if (hasLineOfSight(room, tipX, tipY, ship.x, ship.y)) {
-      spawnMissile(tipX, tipY);
-    }
-  }
-}
-
-function explodeMine(e) {
-  spawnImpactParticles(e.x, e.y);
-  for (let i = 0; i < 200; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const spd = 60 + Math.random() * 200;
-    particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 0.6, maxLife: 0.6 });
-  }
-  const dx = ship.x - e.x, dy = ship.y - e.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < MINE_EXPLOSION_RADIUS) {
-    const damage = MINE_DAMAGE_MAX * (1 - dist / MINE_EXPLOSION_RADIUS);
-    applyDamage(damage);
-  }
-  e.state = 'dying';
-  e.dyingTimer = 0.001;
-}
-
-function updateMine(e, dt) {
-  e.pulseTimer += dt;
-
-  const dx = ship.x - e.x, dy = ship.y - e.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist < MINE_TRIGGER_DIST) {
-    explodeMine(e);
-  } else if (dist < MINE_ALERT_DIST) {
-    e.state = 'alert';
-  } else {
-    e.state = 'idle';
+    const enemy = roll < 0.2  ? spawnMine(room, rng)
+                : roll < 0.55 ? spawnTurret(room, rng)
+                :               spawnHelicopter(room, rng);
+    if (enemy) room.enemies.push(enemy);
   }
 }
 
 export function updateEnemies(room, dt) {
   for (let i = room.enemies.length - 1; i >= 0; i--) {
     const e = room.enemies[i];
-
     if (e.state === 'dying') {
       e.dyingTimer -= dt;
       if (e.dyingTimer <= 0) room.enemies.splice(i, 1);
       continue;
     }
-
-    if (e.kind === 'turret') {
-      updateTurret(e, room, dt);
-    } else if (e.kind === 'mine') {
-      updateMine(e, dt);
-    } else {
-      updateHelicopter(e, room, dt);
-    }
+    if (e.kind === 'turret')         updateTurret(e, room, dt);
+    else if (e.kind === 'mine')      updateMine(e, dt);
+    else                             updateHelicopter(e, room, dt, enemyProjectiles);
   }
 }
 
@@ -232,7 +50,6 @@ export function updateEnemyProjectiles(room, dt) {
       const fy = interpolateWall(room.floorPoints, p.x);
       if (p.y < cy || p.y > fy) hit = true;
     }
-
     if (!hit) {
       const dx = p.x - ship.x, dy = p.y - ship.y;
       if (dx * dx + dy * dy < (SHIP_RADIUS + 3) * (SHIP_RADIUS + 3)) {
@@ -240,7 +57,6 @@ export function updateEnemyProjectiles(room, dt) {
         hit = true;
       }
     }
-
     if (hit) {
       spawnImpactParticles(p.x, p.y);
       enemyProjectiles.splice(i, 1);
@@ -249,39 +65,11 @@ export function updateEnemyProjectiles(room, dt) {
 }
 
 export function drawEnemies(ctx, room) {
-  const S = ENEMY_HALF * 2;
   for (const e of room.enemies) {
     if (e.state === 'dying' && Math.floor(e.dyingTimer * 14) % 2 === 0) continue;
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#ffffff';
-
-    if (e.kind === 'turret') {
-      const r = 9;
-      ctx.beginPath();
-      if (e.mount === 'floor') {
-        ctx.arc(e.x, e.y, r - 0.5, Math.PI, 0);
-      } else {
-        ctx.arc(e.x, e.y, r + 0.5, 0, Math.PI);
-      }
-      ctx.closePath();
-      ctx.fill();
-      const apexOffset = e.mount === 'floor' ? -r : r;
-      ctx.lineWidth = 5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(e.x, e.y + apexOffset);
-      ctx.lineTo(e.x + Math.cos(e.angle) * 13, e.y + apexOffset + Math.sin(e.angle) * 13);
-      ctx.stroke();
-    } else if (e.kind === 'mine') {
-      const pulse = e.state === 'alert'
-        ? MINE_RADIUS + Math.sin(e.pulseTimer * 8) * 3
-        : MINE_RADIUS;
-      ctx.beginPath();
-      ctx.arc(e.x, e.y, pulse, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillRect(e.x - ENEMY_HALF, e.y - ENEMY_HALF, S, S);
-    }
+    if (e.kind === 'turret')         drawTurret(ctx, e);
+    else if (e.kind === 'mine')      drawMine(ctx, e);
+    else                             drawHelicopter(ctx, e);
   }
 }
 
