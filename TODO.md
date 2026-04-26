@@ -44,8 +44,8 @@
 
 ## Phase 4 – Spielablauf
 
-- [ ] **13. Extras / Power-ups**
-  Drei Typen: Energie-Pack (grün), Munitions-Pack (gelb), Treibstoff-Kanister (blau). Erscheinen zufällig in Räumen, blinken leicht. Aufsammeln durch Überfahren. Geometrisch als pulsierende Rauten oder Kreise mit Symbol.
+- [x] **13. Extras / Power-ups**
+  Drei Typen: Energie-Kugel (blau), Schild-Kugel (grün), Munitions-Kugel (gelb). Erscheinen zufällig in Räumen (0–2, nicht im letzten Raum). Aufsammeln durch Überfahren (+0.25 pro Pickup). Geometrisch als Kugeln mit Halbmond-Schatten und Glanzpunkt.
 
 - [ ] **14. Reaktor-Raum & Zerstörungssequenz**
   Letzter Raum enthält zentralen Reaktor (großes geometrisches Objekt, pulsiert). Benötigt mehrere Treffer zum Zerstören. Nach Zerstörung: dramatische Explosion, Alarm-Effekt (Bildschirm-Flash, Farbe wechselt zu Rot), 30-Sekunden-Countdown startet.

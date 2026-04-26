@@ -4,7 +4,7 @@ Ein browserbasiertes 2D-Hubschrauber-Actionspiel im Retro-Style. Du steuerst ein
 
 ## Spielablauf
 
-1. Fliege durch 8–12 Räume und halte Energie, Munition und Treibstoff im Blick
+1. Fliege durch 8–12 Räume und halte Energie, Schild und Munition im Blick
 2. Zerstöre den Reaktor im letzten Raum
 3. Entkome innerhalb von 30 Sekunden zurück zum Eingang
 
@@ -44,3 +44,21 @@ Dann `http://localhost:8000` im Browser öffnen.
 | Wandgeschütz | Stationär, dreht Lauf zum Spieler, schießt bei freier Sicht |
 | Raketenwerfer | Stationär, feuert Heimsuchungsrakete bei Annäherung |
 | Laser-Barriere | Gepulster Strahl von Decke zu Boden, zerstört Projektile |
+
+## Ressourcen
+
+| Ressource | Farbe | Verlust | Game-Over |
+|---|---|---|---|
+| **Energie** | Blau | Sinkt beim Thrusten (↑/↓) | Bei 0 sofort tot |
+| **Schild** | Grün | Treffer von Projektilen, Laser, Kollision | Bei 0: nächster Treffer = Tod |
+| **Munition** | Gelb | Pro Schuss | Kein Schießen mehr möglich |
+
+## Power-ups
+
+Farbige Kugeln in den Räumen. Aufsammeln durch Überfahren (+25 %).
+
+| Farbe | Effekt |
+|---|---|
+| Blau | +Energie |
+| Grün | +Schild |
+| Gelb | +Munition |

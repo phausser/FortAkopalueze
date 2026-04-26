@@ -32,9 +32,9 @@ Alle Agents implementieren folgende Basis-Felder und Methoden:
 |---|---|
 | Sprite | Delta-Dreieck (Outline), Spitze vorne, 2 Punkte hinten — weiß `#ffffff`, `lineWidth 6` |
 | Farbe | Weiß `#ffffff` |
-| Energie | 0.0–1.0 (intern); Verlust 0.05 pro Wandkontakt |
-| Munition | 0.0–1.0 (80 Schüsse = voll) |
-| Schild | 0.0–1.0 (noch nicht aktiv) |
+| Energie | 0.0–1.0; sinkt um `0.035/s` beim Thrusten |
+| Schild | 0.0–1.0; sinkt bei Treffern (Projektile, Kollision, Laser); bei 0 nächster Treffer = Tod |
+| Munition | 0.0–1.0 (80 Schüsse = voll); kein Schuss wenn leer |
 | Kollisionsradius | 12 px (Kreis) |
 
 ### Zustandsmaschine
@@ -52,19 +52,19 @@ DYING ──animation done──→ [State: DEAD]
 
 - **Bewegung:** `←`/`→` rotiert das Schiff, `↑`/`↓` addiert Schub in/gegen Blickrichtung. Geschwindigkeit wird dt-basiert gedämpft (`SHIP_DAMPING = 0.99`). Keine Gravitation.
 - **Schießen:** `Space` feuert Projektil aus der Schiffspitze in Blickrichtung. Feuerrate: 5/s (`FIRE_COOLDOWN = 0.2 s`). Kostet 1/80 Munition.
-- **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Energie −0.05 pro Treffer, 0.5 s Unverwundbarkeit (Schiff blinkt).
-- **Fuel-Verbrauch:** noch nicht implementiert.
+- **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Schild −0.05 pro Wandkontakt, 0.5 s Unverwundbarkeit (Schiff blinkt).
+- **Energie-Verbrauch:** `ENERGY_DRAIN = 0.035/s` solange ↑ oder ↓ gehalten wird.
 - **Rauch-Effekt:** noch nicht implementiert.
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Wand | -5 HP, Bounce |
-| Feind-Projektil | -10 HP |
-| Feind-Hubschrauber (Kollision) | -15 HP beide |
-| Laser | -2 HP/frame |
-| Rakete (Splash) | -20 HP |
+| Wand | −0.05 Schild, Bounce, 0.5 s Unverwundbarkeit |
+| Feind-Projektil | −0.08 Schild, 0.5 s Unverwundbarkeit |
+| Feind-Hubschrauber (Kollision) | −0.08 Schild |
+| Laser | −0.01 Schild/frame (kein Unverwundbarkeits-Fenster) |
+| Rakete (Splash) | −0.2 Schild |
 | Extra/Power-up | Ressource auffüllen |
 | Reaktor (Kollision) | -10 HP |
 | Ausgang (Escape-Phase) | → WIN |
@@ -252,7 +252,7 @@ any emitter ──hp=0──→ disabled (Strahl permanent aus)
 
 | Mit | Effekt |
 |---|---|
-| Spieler (Kontakt, on) | −0.01 energy/frame |
+| Spieler (Kontakt, on) | −0.01 Schild/frame (kein Unverwundbarkeits-Fenster) |
 | Spieler-Projektil (Strahl, on) | Projektil zerstört |
 | Spieler-Projektil (Emitter) | −1 HP Emitter |
 | Gegner-Projektil (Strahl, on) | Projektil zerstört |
@@ -301,23 +301,22 @@ EXPLODING ──sequence done──→ [State: ESCAPE aktiviert]
 
 | Feld | Wert |
 |---|---|
-| Sprite | Raute 16×16 px mit Symbol, blinkt 0.5 Hz |
-| Kollisionsbox | 24×24 px |
+| Sprite | Kugel r=6 px, Halbmond-Schatten unten-rechts, Glanzpunkt oben-links |
+| Kollisionsradius | 12 px |
 | HP | — (kein Schaden möglich) |
 
 ### Typen
 
-| Typ | Farbe | Symbol | Effekt |
+| Typ | Basisfarbe | Schattenfarbe | Effekt |
 |---|---|---|---|
-| `ENERGY` | Grün `#00ff88` | `+` | +40 HP |
-| `AMMO` | Gelb `#ffee00` | `•` | +40 Ammo |
-| `FUEL` | Blau `#00aaff` | Tropfen | +50 Fuel |
+| `energy` | `#4488ff` | `#1144aa` | +0.25 Energie |
+| `shield` | `#44ff88` | `#11aa44` | +0.25 Schild |
+| `ammo` | `#ffdd44` | `#aa8811` | +0.25 Munition |
 
 ### Verhalten
 
-- Statisch, keine Bewegung.
-- Blinkt durch alternierende `globalAlpha` (1.0 ↔ 0.3).
-- Bei Kollision mit Spieler: Ressource auffüllen, Pickup-Sound, `alive = false`.
+- Statisch, keine Bewegung. Spawn: 0–2 pro Raum, nicht im letzten Raum.
+- Bei Kollision mit Spieler: Ressource +0.25 (max 1.0), Impact-Partikel, entfernt.
 
 ---
 

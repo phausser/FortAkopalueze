@@ -153,8 +153,8 @@ function updateTurret(e, room, dt) {
   const step = TURRET_ROT_SPEED * dt;
   e.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
 
-  if (e.mount === 'floor')    e.angle = Math.max(-Math.PI, Math.min(0, e.angle));
-  if (e.mount === 'ceiling')  e.angle = Math.max(0, Math.min(Math.PI, e.angle));
+  if (e.mount === 'floor') e.angle = Math.max(-Math.PI, Math.min(0, e.angle));
+  if (e.mount === 'ceiling') e.angle = Math.max(0, Math.min(Math.PI, e.angle));
 
   e.fireCooldown -= dt;
   if (e.fireCooldown <= 0) {
@@ -259,9 +259,9 @@ export function drawEnemies(ctx, room) {
       const r = 9;
       ctx.beginPath();
       if (e.mount === 'floor') {
-        ctx.arc(e.x, e.y, r, Math.PI, 0);
+        ctx.arc(e.x, e.y, r - 0.5, Math.PI, 0);
       } else {
-        ctx.arc(e.x, e.y, r, 0, Math.PI);
+        ctx.arc(e.x, e.y, r + 0.5, 0, Math.PI);
       }
       ctx.closePath();
       ctx.fill();

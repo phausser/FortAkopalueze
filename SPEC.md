@@ -59,13 +59,11 @@ MENU → PLAYING → ESCAPE → WIN
 
 Intern als Wert `0.0–1.0` gespeichert. HUD-Balken 25 × 5 px.
 
-| Ressource | Farbe | Verlust | Auffüllung |
-|---|---|---|---|
-| **Energie** | Blau | −0.05 pro Wandkontakt (0.5 s Unverwundbarkeit) | Energie-Pack |
-| **Munition** | Gelb | −1/80 pro Schuss | Munitions-Pack |
-| **Schild** | Grün | (noch nicht aktiv) | — |
-
-Game-Over sobald eine Ressource ≤ 0 (noch nicht implementiert).
+| Ressource | Farbe | Verlust | Auffüllung | Game-Over |
+|---|---|---|---|---|
+| **Energie** | Blau | `ENERGY_DRAIN = 0.035/s` beim Thrusten (↑/↓) | Energie-Kugel | Bei 0 sofort |
+| **Schild** | Grün | Treffer von Projektilen, Kollisionen, Laser | Schild-Kugel | Bei 0: nächster Treffer setzt Energie auf 0 |
+| **Munition** | Gelb | `1/80` pro Schuss | Munitions-Kugel | Kein Schießen mehr möglich |
 
 ---
 
@@ -155,13 +153,13 @@ Alle Gegner haben HP, ein geometrisches Sprite, Kollisionsbox und hinterlassen b
 
 ## Extras / Power-ups
 
-Erscheinen zufällig in Räumen (0–2 pro Raum). Blinken mit `0.5 Hz`. Aufsammeln durch Überfahren (Kollisionsbox `24×24 px`).
+Erscheinen zufällig in Räumen (0–2 pro Raum, nicht im letzten Raum). Aufsammeln durch Überfahren (Kollisionsradius `12 px`).
 
 | Typ | Farbe | Effekt | Sprite |
 |---|---|---|---|
-| Energie-Pack | Grün (`#00ff88`) | +40 HP (max 100) | Raute mit `+`-Symbol |
-| Munitions-Pack | Gelb (`#ffee00`) | +40 Ammo (max 120) | Raute mit `•`-Symbol |
-| Treibstoff-Kanister | Blau (`#00aaff`) | +50 Fuel (max 100) | Raute mit Tropfen-Symbol |
+| Energie-Kugel | Blau `#4488ff` / `#1144aa` | +0.25 Energie (max 1.0) | Kugel r=6 px, Halbmond-Schatten unten-rechts, Glanzpunkt oben-links |
+| Schild-Kugel | Grün `#44ff88` / `#11aa44` | +0.25 Schild (max 1.0) | wie oben |
+| Munitions-Kugel | Gelb `#ffdd44` / `#aa8811` | +0.25 Munition (max 1.0) | wie oben |
 
 ---
 
@@ -281,7 +279,6 @@ Alle Sounds synthetisch generiert, keine externen Dateien.
 | Zustand | Bedingung |
 |---|---|
 | WIN | Spieler erreicht Ausgang während `ESCAPE`-Phase |
-| DEAD – kein HP | Energie sinkt auf 0 |
-| DEAD – kein Fuel | Treibstoff sinkt auf 0 |
-| DEAD – keine Ammo | Munition sinkt auf 0 *(optional, nur auf Hard)* |
+| DEAD – keine Energie | Energie sinkt auf 0 (durch Thrusten) |
+| DEAD – Schild leer + Treffer | Schild ist 0 und nächster Treffer setzt Energie auf 0 |
 | DEAD – Zeit | Countdown erreicht 0 in der Escape-Phase |
