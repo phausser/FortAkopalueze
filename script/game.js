@@ -10,6 +10,7 @@ import { missiles, updateMissiles, drawMissiles } from './missiles.js';
 import { enemyProjectiles, updateEnemies, updateEnemyProjectiles, drawEnemies, drawEnemyProjectiles } from './enemies.js';
 import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projectiles.js';
 import { spawnPickupsForRoom, updatePickups, drawPickups } from './pickups.js';
+import { spawnSurvivorsForLevel, updateSurvivors, drawSurvivors } from './survivors.js';
 import { spawnReactor, updateReactor, drawReactor, isReactorDestroyed, screenShake } from './reactor.js';
 import { score, resetScore } from './score.js';
 import { startThrust, stopThrust, stopAllLoops, playDeath, playGameOver, playWin, startMusic } from './sound.js';
@@ -40,6 +41,7 @@ function updateMenu() {
     });
     game.rooms.at(-1).pickups = [];
     spawnReactor(game.rooms.at(-1));
+    spawnSurvivorsForLevel(game.rooms, game.seed);
     game.currentRoomIndex = 0;
     game.camX = 0;
     game.camY = 0;
@@ -129,6 +131,7 @@ function updatePlaying(dt) {
     updateMissiles(room, dt);
     updateLasers(room, dt);
     updatePickups(room, dt);
+    updateSurvivors(room);
     updateReactor(room, dt);
   }
   updateParticles(dt);
@@ -270,6 +273,7 @@ function renderPlaying(ctx) {
   drawRoom(ctx, room);
   drawReactor(ctx, room);
   drawPickups(ctx, room);
+  drawSurvivors(ctx, room);
   drawEnemies(ctx, room);
   drawLasersForRoom(ctx, room);
   drawEnemyProjectiles(ctx);
