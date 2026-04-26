@@ -19,6 +19,7 @@ export function spawnMissile(x, y) {
     state: 'homing',
     explodeTimer: 0,
     trailTimer: 0,
+    lifeTimer: 5,
   });
 }
 
@@ -62,7 +63,8 @@ export function updateMissiles(room, dt) {
     m.x += m.vx * dt;
     m.y += m.vy * dt;
 
-    let explode = false;
+    m.lifeTimer -= dt;
+    let explode = m.lifeTimer <= 0;
     if (m.x < 0 || m.x > room.width) {
       explode = true;
     } else {
