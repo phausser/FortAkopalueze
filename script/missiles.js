@@ -7,10 +7,12 @@ import { ship, applyDamage } from './ship.js';
 import { particles, spawnImpactParticles } from './particles.js';
 import { interpolateWall } from './level.js';
 import { wrapAngle } from './geometry.js';
+import { playMissileSpawn, playMissileExplode } from './sound.js';
 
 export const missiles = [];
 
 export function spawnMissile(x, y) {
+  playMissileSpawn();
   const angle = Math.atan2(ship.y - y, ship.x - x);
   missiles.push({
     x, y,
@@ -75,6 +77,7 @@ export function updateMissiles(room, dt) {
     if (dx * dx + dy * dy < (SHIP_RADIUS + 6) * (SHIP_RADIUS + 6)) explode = true;
 
     if (explode) {
+      playMissileExplode();
       spawnImpactParticles(m.x, m.y);
       for (let j = 0; j < 20; j++) {
         const a = Math.random() * Math.PI * 2;

@@ -1,6 +1,7 @@
 import { SHIP_RADIUS, PROJECTILE_SPEED, PROJECTILE_LENGTH, FIRE_COOLDOWN, MINE_RADIUS, ENEMY_HALF, ENEMY_DMG, SCORE_ENEMY } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { resources } from './resources.js';
+import { playShoot, playEnemyDeath } from './sound.js';
 import { interpolateWall } from './level.js';
 import { spawnImpactParticles } from './particles.js';
 import { addScore } from './score.js';
@@ -18,6 +19,7 @@ function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
 
 export function shoot() {
   if (ship.fireCooldown > 0 || resources.ammo <= 0) return;
+  playShoot();
   resources.ammo -= 1 / 80;
   projectiles.push({
     x: ship.x + Math.cos(ship.angle) * 16,
@@ -58,7 +60,7 @@ export function updateProjectiles(room, dt) {
         const edx = p.x - e.x, edy = p.y - e.y;
         if (edx * edx + edy * edy < hitRadius * hitRadius) {
           e.hp--;
-          if (e.hp <= 0) { e.state = 'dying'; e.dyingTimer = 0.5; addScore(SCORE_ENEMY); }
+          if (e.hp <= 0) { e.state = 'dying'; e.dyingTimer = 0.5; addScore(SCORE_ENEMY); playEnemyDeath(); }
           spawnImpactParticles(p.x, p.y);
           hit = true;
           break;

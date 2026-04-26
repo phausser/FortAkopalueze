@@ -11,6 +11,7 @@ import { interpolateWall, lerp } from './level.js';
 import { enemyProjectiles } from './enemies.js';
 import { missiles } from './missiles.js';
 import { projectiles } from './projectiles.js';
+import { playLaserEmitterDestroyed, startLaserContact, stopLaserContact } from './sound.js';
 
 function distToSegment(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay;
@@ -53,6 +54,7 @@ export function spawnLasersForRoom(room, rng) {
 }
 
 export function updateLasers(room, dt) {
+  let shipInLaser = false;
   for (const L of room.lasers) {
     if (L.state === 'disabled') continue;
 
@@ -90,7 +92,11 @@ export function updateLasers(room, dt) {
           hitEmitter = true;
         }
       }
-      if (hitEmitter) { projectiles.splice(i, 1); continue; }
+      if (hitEmitter) {
+        if (L.state === 'disabled') playLaserEmitterDestroyed();
+        projectiles.splice(i, 1);
+        continue;
+      }
 
       // Strahl zerstört Spieler-Projektile
       if (L.state === 'on' && distToSegment(p.x, p.y, L.ax, L.ay, L.bx, L.by) < 3) {
@@ -104,6 +110,7 @@ export function updateLasers(room, dt) {
     // Spieler-Schaden (umgeht Shield + Unverwundbarkeit)
     if (distToSegment(ship.x, ship.y, L.ax, L.ay, L.bx, L.by) < SHIP_RADIUS) {
       resources.energy = Math.max(0, resources.energy - LASER_DAMAGE * dt);
+      shipInLaser = true;
     }
 
     // Gegner-Projektile
@@ -115,7 +122,7 @@ export function updateLasers(room, dt) {
       }
     }
 
-    // Raketen
+    // Raketen (Ende der Laser-Loop — Raketen zuletzt)
     for (let i = missiles.length - 1; i >= 0; i--) {
       const m = missiles[i];
       if (m.state === 'exploding') continue;
@@ -126,6 +133,7 @@ export function updateLasers(room, dt) {
       }
     }
   }
+  if (shipInLaser) startLaserContact(); else stopLaserContact();
 }
 
 export function drawLasers(ctx) {

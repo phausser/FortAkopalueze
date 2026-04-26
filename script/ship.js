@@ -1,5 +1,6 @@
 import { CANVAS_HEIGHT, SHIP_RADIUS, RESTITUTION, COLLISION_DAMAGE, INVINCIBLE_TIME, ENERGY_DRAIN } from './constants.js';
 import { resources, resetResources } from './resources.js';
+import { playHit, playWallCollision } from './sound.js';
 
 export const ship = {
   x: 0,
@@ -24,6 +25,7 @@ export function resetShip(firstRoom) {
 
 export function applyDamage(amount) {
   if (ship.invincibleTimer > 0) return;
+  playHit();
   if (resources.shield <= 0) {
     resources.energy = 0;
     return;
@@ -33,7 +35,7 @@ export function applyDamage(amount) {
   ship.invincibleTimer = INVINCIBLE_TIME;
 }
 
-export function applyCollisionDamage() { applyDamage(COLLISION_DAMAGE); }
+export function applyCollisionDamage() { playWallCollision(); applyDamage(COLLISION_DAMAGE); }
 
 function closestPointOnSegment(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay;

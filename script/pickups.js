@@ -2,6 +2,7 @@ import { PICKUP_RADIUS, PICKUP_COLLECT_DIST, PICKUP_AMOUNT } from './constants.j
 import { resources } from './resources.js';
 import { ship } from './ship.js';
 import { spawnImpactParticles } from './particles.js';
+import { playPickup } from './sound.js';
 import { interpolateWall, lerp } from './level.js';
 
 const KINDS = ['energy', 'shield', 'ammo'];
@@ -36,6 +37,7 @@ export function updatePickups(room, dt) {
     const dy = ship.y - p.y;
     if (dx * dx + dy * dy < PICKUP_COLLECT_DIST * PICKUP_COLLECT_DIST) {
       resources[p.kind] = Math.min(1.0, resources[p.kind] + PICKUP_AMOUNT);
+      playPickup(p.kind);
       spawnImpactParticles(p.x, p.y);
       room.pickups.splice(i, 1);
     }

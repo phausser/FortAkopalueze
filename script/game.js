@@ -12,6 +12,7 @@ import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projec
 import { spawnPickupsForRoom, updatePickups, drawPickups } from './pickups.js';
 import { spawnReactor, updateReactor, drawReactor, isReactorDestroyed, screenShake } from './reactor.js';
 import { score, resetScore } from './score.js';
+import { startThrust, stopThrust, stopAllLoops, playDeath, playGameOver, playWin } from './sound.js';
 
 // ─── Spielstand ───────────────────────────────────────────────────────────────
 
@@ -93,6 +94,9 @@ function updatePlaying(dt) {
     ship.vy += Math.cos(ship.angle) * SHIP_STRAFE * dt;
   }
 
+  const thrusting = input.isHeld('ArrowUp') || input.isHeld('ArrowDown');
+  if (thrusting) startThrust(); else stopThrust();
+
   if (input.isHeld('ArrowUp')) {
     ship.vx += Math.cos(ship.angle) * SHIP_THRUST * dt;
     ship.vy += Math.sin(ship.angle) * SHIP_THRUST * dt;
@@ -135,9 +139,9 @@ function updatePlaying(dt) {
     game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, room.height - CANVAS_HEIGHT)));
   }
 
-  if (resources.energy <= 0) { game.setState(State.DEAD); return; }
+  if (resources.energy <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
 
-  if (isReactorDestroyed(game.rooms[0])) { game.setState(State.WIN); return; }
+  if (isReactorDestroyed(game.rooms[0])) { stopAllLoops(); playWin(); game.setState(State.WIN); return; }
 
   if (input.isJustPressed('Escape')) game.setState(State.MENU);
 }

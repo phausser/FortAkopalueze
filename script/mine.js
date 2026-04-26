@@ -5,6 +5,7 @@ import {
 import { ship, applyDamage } from './ship.js';
 import { particles, spawnImpactParticles } from './particles.js';
 import { interpolateWall, lerp } from './level.js';
+import { playMineAlert, playMineExplode } from './sound.js';
 
 export function spawnMine(room, rng) {
   for (let attempt = 0; attempt < 12; attempt++) {
@@ -26,6 +27,7 @@ export function spawnMine(room, rng) {
 }
 
 function explodeMine(e) {
+  playMineExplode();
   spawnImpactParticles(e.x, e.y);
   for (let i = 0; i < 200; i++) {
     const a = Math.random() * Math.PI * 2;
@@ -49,7 +51,9 @@ export function updateMine(e, dt) {
   if (dist < MINE_TRIGGER_DIST) {
     explodeMine(e);
   } else {
-    e.state = dist < MINE_ALERT_DIST ? 'alert' : 'idle';
+    const nextState = dist < MINE_ALERT_DIST ? 'alert' : 'idle';
+    if (nextState === 'alert' && e.state === 'idle') playMineAlert();
+    e.state = nextState;
   }
 }
 

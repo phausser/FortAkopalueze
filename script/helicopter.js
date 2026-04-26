@@ -5,6 +5,7 @@ import {
 } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { interpolateWall, lerp } from './level.js';
+import { playEnemyShoot } from './sound.js';
 
 export function spawnHelicopter(room, rng) {
   for (let attempt = 0; attempt < 12; attempt++) {
@@ -46,6 +47,7 @@ export function updateHelicopter(e, room, dt, enemyProjectiles) {
     e.fireCooldown -= dt;
     if (e.fireCooldown <= 0) {
       e.fireCooldown = ENEMY_FIRE_RATE;
+      playEnemyShoot();
       const angle = Math.atan2(dy, dx);
       enemyProjectiles.push({
         x: e.x, y: e.y,
