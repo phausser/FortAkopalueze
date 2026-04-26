@@ -60,6 +60,7 @@ export function spawnEnemiesForRoom(room, rng) {
           hp: LAUNCHER_HP,
           state: 'idle',
           cooldownTimer: 0,
+          blinkPhase: 0,
           pulseTimer: 0,
           dyingTimer: 0,
         });
@@ -176,9 +177,15 @@ function updateLauncher(e, dt) {
 
   if (e.state === 'cooldown') {
     e.cooldownTimer -= dt;
-    if (e.cooldownTimer <= 0) e.state = 'idle';
+    if (e.cooldownTimer <= 0) {
+      e.state = 'idle';
+    } else {
+      const t = 1 - (e.cooldownTimer / LAUNCHER_COOLDOWN);
+      e.blinkPhase += (2 + t * 8) * dt;
+    }
     return;
   }
+  e.blinkPhase = 0;
 
   const dx = ship.x - e.x, dy = ship.y - e.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
@@ -246,6 +253,9 @@ export function drawEnemies(ctx, room) {
   const S = ENEMY_HALF * 2;
   for (const e of room.enemies) {
     if (e.state === 'dying' && Math.floor(e.dyingTimer * 14) % 2 === 0) continue;
+    if (e.kind === 'launcher' && e.state === 'cooldown') {
+      if (Math.sin(e.blinkPhase * Math.PI * 2) <= 0) continue;
+    }
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#ffffff';
 
@@ -266,13 +276,6 @@ export function drawEnemies(ctx, room) {
       ctx.beginPath();
       ctx.arc(e.x, e.y, pulse, 0, Math.PI * 2);
       ctx.fill();
-      if (e.state === 'cooldown') {
-        ctx.strokeStyle = '#555555';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, pulse - 4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
     } else {
       ctx.fillRect(e.x - ENEMY_HALF, e.y - ENEMY_HALF, S, S);
     }
