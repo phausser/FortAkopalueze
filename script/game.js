@@ -39,7 +39,7 @@ function updateMenu() {
       spawnPickupsForRoom(room, rng);
     });
     game.rooms.at(-1).pickups = [];
-    spawnReactor(game.rooms[0]);
+    spawnReactor(game.rooms.at(-1));
     game.currentRoomIndex = 0;
     game.camX = 0;
     game.camY = 0;
@@ -142,7 +142,7 @@ function updatePlaying(dt) {
 
   if (resources.energy <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
 
-  if (isReactorDestroyed(game.rooms[0])) { stopAllLoops(); playWin(); game.setState(State.WIN); return; }
+  if (isReactorDestroyed(game.rooms.at(-1))) { stopAllLoops(); playWin(); game.setState(State.WIN); return; }
 
   if (input.isJustPressed('Escape')) game.setState(State.MENU);
 }
