@@ -12,7 +12,7 @@ import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projec
 import { spawnPickupsForRoom, updatePickups, drawPickups } from './pickups.js';
 import { spawnReactor, updateReactor, drawReactor, isReactorDestroyed, screenShake } from './reactor.js';
 import { score, resetScore } from './score.js';
-import { startThrust, stopThrust, stopAllLoops, playDeath, playGameOver, playWin } from './sound.js';
+import { startThrust, stopThrust, stopAllLoops, playDeath, playGameOver, playWin, startMusic } from './sound.js';
 
 // ─── Spielstand ───────────────────────────────────────────────────────────────
 
@@ -49,6 +49,7 @@ function updateMenu() {
     missiles.length = 0;
     resetShip(game.rooms[0]);
     resetScore();
+    startMusic();
     game.setState(State.PLAYING);
   }
 }

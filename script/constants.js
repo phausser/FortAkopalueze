@@ -21,7 +21,7 @@ export const PARTICLE_COUNT = 12;
 export const ROOM_COUNT_MIN = 8;
 export const ROOM_COUNT_MAX = 12;
 export const MIN_TUNNEL_H = 120;
-export const BG_COLORS = ['#3a1111', '#113511', '#3d1111', '#11113a', '#3a3d11'];
+export const BG_COLORS = ['#662222', '#226622', '#442244', '#222266', '#444422'];
 
 export const ENEMY_HALF = 7;
 export const ENEMY_PATROL_SPD = 80;
@@ -64,15 +64,15 @@ export const LASER_EMITTER_HP = 4;
 export const LASER_EMITTER_R = 6;      // hit radius for emitter
 export const LASER_COLOR = '#ffffff';
 
-export const REACTOR_CORE_R        = 22;
-export const REACTOR_HP            = 25;
-export const REACTOR_ORBIT_R       = 72;
-export const REACTOR_EXPLODE_TIME  = 2.5;
-export const REACTOR_SHAKE_HIT     = 6;
+export const REACTOR_CORE_R = 22;
+export const REACTOR_HP = 25;
+export const REACTOR_ORBIT_R = 72;
+export const REACTOR_EXPLODE_TIME = 2.5;
+export const REACTOR_SHAKE_HIT = 6;
 export const REACTOR_SHAKE_EXPLODE = 20;
-export const REACTOR_ELECTRON_R    = 4;
+export const REACTOR_ELECTRON_R = 4;
 
-export const SCORE_ENEMY   = 100;
+export const SCORE_ENEMY = 100;
 export const SCORE_REACTOR = 5000;
 
 export const PICKUP_RADIUS = 6;

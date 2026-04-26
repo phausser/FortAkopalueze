@@ -221,4 +221,24 @@ export function stopLaserContact() { stopLoop('laser'); }
 export function stopAllLoops() {
   stopLoop('thrust', 0.03);
   stopLoop('laser', 0.03);
+  stopMusic();
+}
+
+// ─── Hintergrundmusik ─────────────────────────────────────────────────────────
+
+let bgMusic = null;
+
+export function startMusic() {
+  if (bgMusic) return;
+  bgMusic = new Audio('sound/reactor-under-ice.mp3');
+  bgMusic.loop = true;
+  bgMusic.volume = 0.35;
+  bgMusic.play().catch(() => {});
+}
+
+export function stopMusic() {
+  if (!bgMusic) return;
+  bgMusic.pause();
+  bgMusic.currentTime = 0;
+  bgMusic = null;
 }
