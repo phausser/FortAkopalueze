@@ -1,6 +1,7 @@
 import { CANVAS_HEIGHT, SHIP_RADIUS, RESTITUTION, COLLISION_DAMAGE, INVINCIBLE_TIME, ENERGY_DRAIN } from './constants.js';
 import { resources, resetResources } from './resources.js';
 import { playHit, playWallCollision } from './sound.js';
+import { interpolateWall } from './level.js';
 
 export const ship = {
   x: 0,
@@ -14,7 +15,13 @@ export const ship = {
 
 export function resetShip(firstRoom) {
   ship.x = 100;
-  ship.y = firstRoom ? firstRoom.entranceY : CANVAS_HEIGHT / 2;
+  if (firstRoom) {
+    const ceilY = interpolateWall(firstRoom.ceilingPoints, 100);
+    const floorY = interpolateWall(firstRoom.floorPoints, 100);
+    ship.y = (ceilY + floorY) / 2;
+  } else {
+    ship.y = CANVAS_HEIGHT / 2;
+  }
   ship.angle = 0;
   ship.vx = 0;
   ship.vy = 0;
