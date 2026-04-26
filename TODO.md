@@ -50,6 +50,9 @@
 - [x] **14. Reaktor-Raum & Zerstörungssequenz**
   Letzter Raum enthält zentralen Reaktor (großes geometrisches Objekt, pulsiert). Benötigt mehrere Treffer zum Zerstören. Nach Zerstörung: dramatische Explosion mit Screen-Shake und Partikel-Burst. Win-Screen erscheint nach Ablauf der Explosions-Animation. Reaktorkern-Kontakt tötet den Spieler (~0.5s), Laser tötet ebenfalls in ~0.5s (beide umgehen Shield + Unverwundbarkeit).
 
+- [ ] **23. Level-System**
+  Level 1 = 2 Räume, Level 2 = 3 Räume, Level N = N+1 Räume. Nach Reaktorzerstörung: Win-Screen zeigt „Reaktor zerstört. Mit ENTER oder LEERTASTE zum Level X". Beim Levelstart kurze Einblendung „Level X. Zerstöre den Reaktor" (2–3 s). Alle Ressourcen werden zu Levelstart vollständig aufgeladen. Score läuft über alle Level weiter.
+
 - [ ] **15. Escape-Phase: 30-Sekunden-Countdown**
   Countdown läuft, Spieler muss zurück zum Eingangs-Raum (Ausgang markiert, Pfeil-Hinweis). Räume füllen sich mit mehr Gegnern/Hindernissen. Bei 0 Sekunden: Explosion, Game-Over. Bei rechtzeitigem Erreichen: Win-Screen.
 

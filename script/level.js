@@ -42,6 +42,7 @@ function pickType(rng) {
 }
 
 function generateRoom(index, totalRooms, rng, spawnEnemiesForRoom) {
+  const isFirst = index === 0;
   const isLast = index === totalRooms - 1;
   const type = isLast ? 'reactor' : pickType(rng);
   const p = ROOM_PARAMS[type];
@@ -65,11 +66,11 @@ function generateRoom(index, totalRooms, rng, spawnEnemiesForRoom) {
     const x = Math.round(t * width);
     let cy, fy;
     if (i === 0) {
-      cy = entranceY - tunnelH / 2;
-      fy = entranceY + tunnelH / 2;
+      if (isFirst) { cy = Math.round(height / 2); fy = Math.round(height / 2); }
+      else { cy = entranceY - tunnelH / 2; fy = entranceY + tunnelH / 2; }
     } else if (i === numPts - 1) {
-      cy = exitY - tunnelH / 2;
-      fy = exitY + tunnelH / 2;
+      if (isLast) { cy = Math.round(height / 2); fy = Math.round(height / 2); }
+      else { cy = exitY - tunnelH / 2; fy = exitY + tunnelH / 2; }
     } else {
       cy = Math.round(20 + rng() * Math.min(p.ceilAmp, maxCeilY - 20));
       fy = Math.round(minFloorY + rng() * Math.min(p.floorAmp, height - minFloorY - 20));
