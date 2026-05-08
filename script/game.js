@@ -333,15 +333,15 @@ function renderPlaying(ctx) {
   const shakeY = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
 
   ctx.save();
-  ctx.filter = 'blur(40px)';
-  ctx.translate(-game.camX * 0.4 + shakeX, -game.camY * 0.4 + shakeY);
-  drawParallaxLayer(ctx, room, 30, 'rgba(0,0,0,0.45)');
+  ctx.filter = 'blur(30px)';
+  ctx.translate(-game.camX * 0.3 + shakeX, -game.camY * 0.3 + shakeY);
+  drawParallaxLayer(ctx, room, 30, 'rgba(0,0,0,0.35)');
   ctx.restore();
 
   ctx.save();
-  ctx.filter = 'blur(80px)';
-  ctx.translate(-game.camX * 0.8 + shakeX, -game.camY * 0.8 + shakeY);
-  drawParallaxLayer(ctx, room, 60, 'rgba(0,0,0,0.8)');
+  ctx.filter = 'blur(70px)';
+  ctx.translate(-game.camX * 0.6 + shakeX, -game.camY * 0.6 + shakeY);
+  drawParallaxLayer(ctx, room, 60, 'rgba(0,0,0,0.5)');
   ctx.restore();
 
   ctx.save();
