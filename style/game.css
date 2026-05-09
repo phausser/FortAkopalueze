@@ -28,5 +28,5 @@ body {
 #game-canvas {
   display: block;
   image-rendering: pixelated;
-  border: 1px solid #222222;
+  border: 1px solid #333333;
 }

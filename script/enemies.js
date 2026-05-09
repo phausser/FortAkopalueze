@@ -10,11 +10,20 @@ export const enemyProjectiles = [];
 
 export { segmentsIntersect, hasLineOfSight } from './geometry.js';
 
-export function spawnEnemiesForRoom(room, rng) {
+export function spawnEnemiesForRoom(room, rng, index = 0, total = 1) {
   room.enemies = [];
   if (room.type === 'treasury') return;
 
-  const count = 1 + Math.floor(rng() * 3);
+  if (room.type === 'reactor') {
+    const count = 4 + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i++) {
+      const enemy = rng() < 0.7 ? spawnTurret(room, rng) : spawnHelicopter(room, rng);
+      if (enemy) room.enemies.push(enemy);
+    }
+    return;
+  }
+
+  const count = 1 + Math.floor(rng() * 2) + Math.floor((index / (total - 1)) * 3);
   for (let i = 0; i < count; i++) {
     const roll = rng();
     const enemy = roll < 0.2  ? spawnMine(room, rng)

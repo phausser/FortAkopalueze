@@ -102,7 +102,7 @@ function generateRoom(index, totalRooms, rng, spawnEnemiesForRoom) {
 
   const bgColor = BG_COLORS[Math.floor(rng() * BG_COLORS.length)];
   const room = { type, width, height, bgColor, ceilingPoints, floorPoints, obstacles, entranceY, exitY, tunnelH };
-  spawnEnemiesForRoom(room, rng);
+  spawnEnemiesForRoom(room, rng, index, totalRooms);
   return room;
 }
 

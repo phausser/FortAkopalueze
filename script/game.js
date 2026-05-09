@@ -39,8 +39,8 @@ let escapeTimer = -1;
 
 function initLevel(level) {
   game.seed = Date.now();
-  game.rooms = generateLevel(game.seed, (room, rng) => {
-    spawnEnemiesForRoom(room, rng);
+  game.rooms = generateLevel(game.seed, (room, rng, index, total) => {
+    spawnEnemiesForRoom(room, rng, index, total);
     spawnLasersForRoom(room, rng);
     spawnPickupsForRoom(room, rng);
   }, level + 1);
