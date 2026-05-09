@@ -73,6 +73,7 @@ export const REACTOR_SHAKE_EXPLODE = 20;
 export const REACTOR_ELECTRON_R = 4;
 
 export const BEAM_IN_DURATION = 1.2;
+export const ESCAPE_TIME = 10;
 
 export const SCORE_ENEMY = 100;
 export const SCORE_REACTOR = 5000;

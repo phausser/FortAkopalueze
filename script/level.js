@@ -69,8 +69,8 @@ function generateRoom(index, totalRooms, rng, spawnEnemiesForRoom) {
       if (isFirst) { cy = Math.round(height / 2); fy = Math.round(height / 2); }
       else { cy = entranceY - tunnelH / 2; fy = entranceY + tunnelH / 2; }
     } else if (i === numPts - 1) {
-      if (isLast) { cy = Math.round(height / 2); fy = Math.round(height / 2); }
-      else { cy = exitY - tunnelH / 2; fy = exitY + tunnelH / 2; }
+      cy = exitY - tunnelH / 2;
+      fy = exitY + tunnelH / 2;
     } else {
       cy = Math.round(20 + rng() * Math.min(p.ceilAmp, maxCeilY - 20));
       fy = Math.round(minFloorY + rng() * Math.min(p.floorAmp, height - minFloorY - 20));
