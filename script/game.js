@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State } from './constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State, BEAM_IN_DURATION } from './constants.js';
 import { input } from './input.js';
 import { resources, resetResources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
@@ -32,6 +32,7 @@ const game = {
 };
 
 let thrustTrailTimer = 0;
+let beamInTimer = 0;
 
 // ─── Level-Initialisierung ────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ function updateMenu() {
 function updateLevelIntro(dt) {
   game.levelIntroTimer -= dt;
   if (game.levelIntroTimer <= 0 || input.isJustPressed('Enter') || input.isJustPressed('Space')) {
+    beamInTimer = BEAM_IN_DURATION;
     game.setState(State.PLAYING);
   }
 }
@@ -104,7 +106,25 @@ function handleRoomTransition(room) {
   }
 }
 
+function spawnBeamParticle() {
+  const hue = 170 + Math.random() * 40;
+  particles.push({
+    x: ship.x + (Math.random() - 0.5) * 28,
+    y: ship.y + (Math.random() - 0.5) * 44,
+    vx: (Math.random() - 0.5) * 50,
+    vy: (Math.random() - 0.5) * 50,
+    life: 0.15 + Math.random() * 0.35,
+    maxLife: 0.5,
+    color: `hsl(${hue}, 100%, ${65 + Math.random() * 30}%)`,
+  });
+}
+
 function updatePlaying(dt) {
+  if (beamInTimer > 0) {
+    beamInTimer = Math.max(0, beamInTimer - dt);
+    for (let i = 0; i < 3; i++) spawnBeamParticle();
+  }
+
   const shift = input.isHeld('ShiftLeft') || input.isHeld('ShiftRight');
   if (!shift && input.isHeld('ArrowLeft')) ship.angle -= SHIP_ROTATION_SPEED * dt;
   if (!shift && input.isHeld('ArrowRight')) ship.angle += SHIP_ROTATION_SPEED * dt;
@@ -356,7 +376,9 @@ function renderPlaying(ctx) {
   drawMissiles(ctx);
   drawProjectiles(ctx);
   drawParticles(ctx);
+  if (beamInTimer > 0) ctx.globalAlpha = 1 - beamInTimer / BEAM_IN_DURATION;
   drawShip(ctx);
+  ctx.globalAlpha = 1;
   ctx.restore();
 
   drawHUD(ctx);

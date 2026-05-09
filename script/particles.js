@@ -22,7 +22,7 @@ export function updateParticles(dt) {
 export function drawParticles(ctx) {
   for (const p of particles) {
     ctx.globalAlpha = p.life / (p.maxLife ?? PARTICLE_LIFETIME);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = p.color ?? '#ffffff';
     ctx.beginPath();
     ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
     ctx.fill();
