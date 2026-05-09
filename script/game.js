@@ -179,6 +179,8 @@ function updatePlaying(dt) {
   if (ship.invincibleTimer > 0) ship.invincibleTimer -= dt;
   if (ship.fireCooldown > 0) ship.fireCooldown -= dt;
 
+  resources.ammo = Math.min(1, resources.ammo + dt / 120);
+
   if (input.isHeld('Space')) shoot();
 
   const room = game.rooms[game.currentRoomIndex];
