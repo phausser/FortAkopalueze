@@ -17,7 +17,10 @@ export function spawnEnemiesForRoom(room, rng, index = 0, total = 1) {
   if (room.type === 'reactor') {
     const count = 4 + Math.floor(rng() * 3);
     for (let i = 0; i < count; i++) {
-      const enemy = rng() < 0.7 ? spawnTurret(room, rng) : spawnHelicopter(room, rng);
+      const roll = rng();
+      const enemy = roll < 0.25 ? spawnTurret(room, rng)
+                  : roll < 0.55 ? spawnMine(room, rng)
+                  :               spawnHelicopter(room, rng);
       if (enemy) room.enemies.push(enemy);
     }
     return;
