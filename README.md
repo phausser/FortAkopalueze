@@ -1,30 +1,9 @@
-# Fort Akopalueze
+[![Deploy to GitHub Pages](https://github.com/phausser/FortAkopalueze/actions/workflows/deploy.yml/badge.svg)](https://github.com/phausser/FortAkopalueze/actions/workflows/deploy.yml)
 
+# Fort Akopalueze
+![my screenshot](preview.png)
 Ein browserbasiertes 2D-Raumschiff-Actionspiel im Retro-Style. Du steuerst ein kleines Raumschiff durch prozedural generierte Höhlen, kämpfst gegen Wachdrohnen, Geschütztürme, Minen und Laser-Barrieren – und musst am Ende den Reaktor zerstören und entkommen.
 
-## Spielablauf
-
-1. Fliege durch 8–12 Räume und halte Energie, Schild und Munition im Blick
-2. Zerstöre den Reaktor im letzten Raum
-3. Entkome zurück zum Eingang
-
-## Technologien
-
-- **HTML5 Canvas** – Rendering, vollständig geometrisch (keine Sprites/Texturen)
-- **Vanilla JavaScript (ES Modules)** – Game-Loop via `requestAnimationFrame`, keine Frameworks
-- **Web Audio API** – Synthetische Soundeffekte ohne externe Dateien
-- **CSS** – Layout und Vollbild-Skalierung
-- **LocalStorage** – Highscore-Persistenz *(geplant)*
-
-## Starten
-
-Lokalen Dev-Server starten (ES Modules benötigen HTTP):
-
-```bash
-python3 -m http.server
-```
-
-Dann `http://localhost:8000` im Browser öffnen.
 
 ## Steuerung
 
