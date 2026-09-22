@@ -72,7 +72,7 @@
   Offen: Scan-Line-Overlay für Retro-Look, flackernde Raumbeleuchtung.
 
 - [x] **18. Sound-Effekte (Web Audio API)**
-  Erledigt: Rotor-Hum (Loop), Schuss, Treffer, Wandkollision, Tod, Gegner-Tod, Raketen-Abschuss/-Explosion, Minen-Alarm/-Explosion, Laser-Emitter-Zerstörung, Laser-Kontakt (Loop), Reaktor-Treffer/-Explosion, Pickup (je Ressourcentyp), Sieg-Fanfare, Game-Over — alles synthetisch. Zusätzlich eine Hintergrundmusik-Loop aus einer externen MP3-Datei (`sound/reactor-under-ice.mp3`).
+  Erledigt: Rotor-Hum (Loop), Schuss, Treffer, Wandkollision, Tod, Gegner-Tod, Raketen-Abschuss/-Explosion, Minen-Alarm/-Explosion, Laser-Emitter-Zerstörung, Laser-Kontakt (Loop), Reaktor-Treffer/-Explosion, Pickup (je Ressourcentyp), Sieg-Fanfare, Game-Over — alles synthetisch. Zusätzlich eine Hintergrundmusik-Loop aus zwei externen MP3-Dateien (`sound/reactor-under-ice.mp3`, `sound/reactor-power.mp3`), die pro Level alternierend gewählt werden.
   Offen: Alarm-Sirene / Countdown-Piep für die Escape-Phase, Lautstärke-Regler.
 
 - [ ] **19. Menü, Game-Over & Win-Screen**

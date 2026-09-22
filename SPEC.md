@@ -16,7 +16,7 @@ Ein Single-Player-Arcade-Shooter im Stil von *Fort Apocalypse* (C64, 1982). Der 
 | Ziel-FPS | 60, `dt` pro Frame auf max. 100 ms geclampt |
 | Font | „Michroma" (Google Fonts) für HUD- und Menütext |
 | Persistenz | keine — kein Highscore/LocalStorage implementiert (siehe TODO #21) |
-| Abhängigkeiten | keine externen JS-Bibliotheken; ein externes MP3-Asset für die Hintergrundmusik (alle SFX bleiben synthetisch) |
+| Abhängigkeiten | keine externen JS-Bibliotheken; zwei externe MP3-Assets für die Hintergrundmusik (alle SFX bleiben synthetisch) |
 
 ---
 
@@ -260,7 +260,7 @@ Verwendet für: Projektil-/Wandtreffer (12 Partikel, `120 px/s`, `0.42 s`), Schu
 
 ## Audio (Web Audio API)
 
-Alle Soundeffekte werden synthetisch erzeugt (Oszillator-Töne + gefilterter Noise-Buffer). Die Hintergrundmusik ist eine Ausnahme: eine externe MP3-Datei (`sound/reactor-under-ice.mp3`), looped, Lautstärke 0.35, startet mit jedem Levelstart.
+Alle Soundeffekte werden synthetisch erzeugt (Oszillator-Töne + gefilterter Noise-Buffer). Die Hintergrundmusik ist eine Ausnahme: zwei externe MP3-Dateien (`sound/reactor-under-ice.mp3`, `sound/reactor-power.mp3`), looped, Lautstärke 0.35. Pro Level wird alternierend eins der beiden Stücke gestartet (`Level % 2` — ungerade Level = erstes Stück, gerade Level = zweites).
 
 | Sound | Erzeugung | Trigger |
 |---|---|---|

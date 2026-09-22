@@ -226,11 +226,14 @@ export function stopAllLoops() {
 
 // ─── Hintergrundmusik ─────────────────────────────────────────────────────────
 
+const MUSIC_TRACKS = ['sound/reactor-under-ice.mp3', 'sound/reactor-power.mp3'];
+
 let bgMusic = null;
 
-export function startMusic() {
+export function startMusic(level = 1) {
   if (bgMusic) return;
-  bgMusic = new Audio('sound/reactor-under-ice.mp3');
+  const track = MUSIC_TRACKS[(level - 1) % MUSIC_TRACKS.length];
+  bgMusic = new Audio(track);
   bgMusic.loop = true;
   bgMusic.volume = 0.35;
   bgMusic.play().catch(() => {});

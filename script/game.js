@@ -69,7 +69,7 @@ function initLevel(level) {
   beamOutTimer = 0;
   winBonus = null;
   resetRescuedCount();
-  startMusic();
+  startMusic(level);
 }
 
 // ─── Win-Bonus-Tally (Zeit + gerettete Überlebende) ──────────────────────────
