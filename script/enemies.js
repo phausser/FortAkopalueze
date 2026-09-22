@@ -10,7 +10,7 @@ export const enemyProjectiles = [];
 
 export { segmentsIntersect, hasLineOfSight } from './geometry.js';
 
-export function spawnEnemiesForRoom(room, rng, index = 0, total = 1) {
+export function spawnEnemiesForRoom(room, rng, depth = 0, maxDepth = 1) {
   room.enemies = [];
   if (room.type === 'treasury') return;
 
@@ -26,7 +26,7 @@ export function spawnEnemiesForRoom(room, rng, index = 0, total = 1) {
     return;
   }
 
-  const count = 1 + Math.floor(rng() * 2) + Math.floor((index / (total - 1)) * 3);
+  const count = 1 + Math.floor(rng() * 2) + Math.floor((depth / maxDepth) * 3);
   for (let i = 0; i < count; i++) {
     const roll = rng();
     const enemy = roll < 0.2  ? spawnMine(room, rng)

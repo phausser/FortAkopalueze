@@ -3,7 +3,7 @@ import { resources } from './resources.js';
 import { ship } from './ship.js';
 import { spawnImpactParticles } from './particles.js';
 import { playPickup } from './sound.js';
-import { interpolateWall, lerp } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
 
 const KINDS = ['energy', 'shield', 'ammo'];
 
@@ -16,9 +16,11 @@ const COLORS = {
 export function spawnPickupsForRoom(room, rng) {
   room.pickups = [];
   const count = 2 + Math.floor(rng() * 2);
+  const zones = getExitClearZones(room.exits, room.width, room.height);
   for (let i = 0; i < count; i++) {
     for (let attempt = 0; attempt < 12; attempt++) {
       const x = room.width * lerp(0.15, 0.85, rng());
+      if (overlapsExitZonesX(zones, x, PICKUP_RADIUS * 2)) continue;
       const ceilY = interpolateWall(room.ceilingPoints, x);
       const floorY = interpolateWall(room.floorPoints, x);
       const margin = PICKUP_RADIUS + 20;

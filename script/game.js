@@ -1,8 +1,8 @@
-import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State, BEAM_IN_DURATION, ESCAPE_TIME } from './constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State, BEAM_IN_DURATION, ESCAPE_TIME_PER_ROOM, MINIMAP_CELL, MINIMAP_GAP, MINIMAP_MARGIN } from './constants.js';
 import { input } from './input.js';
 import { resources, resetResources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
-import { generateLevel } from './level.js';
+import { generateLevel, SIDES, OPPOSITE_SIDE } from './level.js';
 import { spawnEnemiesForRoom } from './enemies.js';
 import { spawnLasersForRoom, updateLasers, drawLasersForRoom } from './laser.js';
 import { ship, resetShip, resolveCollisions, drawShip } from './ship.js';
@@ -21,7 +21,9 @@ const game = {
   state: State.MENU,
   previousTime: 0,
   rooms: [],
-  currentRoomIndex: 0,
+  currentRoomId: 0,
+  reactorRoom: null,
+  minimapLayout: null,
   camX: 0,
   camY: 0,
   seed: 0,
@@ -39,15 +41,20 @@ let escapeTimer = -1;
 
 function initLevel(level) {
   game.seed = Date.now();
-  game.rooms = generateLevel(game.seed, (room, rng, index, total) => {
-    spawnEnemiesForRoom(room, rng, index, total);
+  game.rooms = generateLevel(game.seed, (room, rng, depth, maxDepth) => {
+    spawnEnemiesForRoom(room, rng, depth, maxDepth);
     spawnLasersForRoom(room, rng);
     spawnPickupsForRoom(room, rng);
   }, level + 1);
-  game.rooms.at(-1).pickups = [];
-  spawnReactor(game.rooms.at(-1));
+
+  game.reactorRoom = game.rooms.find(r => r.type === 'reactor');
+  game.reactorRoom.pickups = [];
+  spawnReactor(game.reactorRoom);
   spawnSurvivorsForLevel(game.rooms, game.seed, level);
-  game.currentRoomIndex = 0;
+
+  game.currentRoomId = 0;
+  game.rooms[0].discovered = true;
+  game.minimapLayout = computeMinimapLayout(game.rooms);
   game.camX = 0;
   game.camY = 0;
   projectiles.length = 0;
@@ -58,6 +65,15 @@ function initLevel(level) {
   resetResources();
   escapeTimer = -1;
   startMusic();
+}
+
+function computeMinimapLayout(rooms) {
+  let minGx = Infinity, maxGx = -Infinity, minGy = Infinity, maxGy = -Infinity;
+  for (const r of rooms) {
+    minGx = Math.min(minGx, r.gx); maxGx = Math.max(maxGx, r.gx);
+    minGy = Math.min(minGy, r.gy); maxGy = Math.max(maxGy, r.gy);
+  }
+  return { minGx, maxGx, minGy, maxGy };
 }
 
 // ─── Update-Logik pro Zustand ─────────────────────────────────────────────────
@@ -80,31 +96,35 @@ function updateLevelIntro(dt) {
   }
 }
 
+function hasCrossedExit(room, side) {
+  if (side === 'left') return ship.x + SHIP_RADIUS < 0;
+  if (side === 'right') return ship.x - SHIP_RADIUS > room.width;
+  if (side === 'top') return ship.y + SHIP_RADIUS < 0;
+  return ship.y - SHIP_RADIUS > room.height; // bottom
+}
+
+function placeShipAtEntry(target, entrySide, entryExit) {
+  if (entrySide === 'left') { ship.x = SHIP_RADIUS + 1; ship.y = entryExit.pos; }
+  else if (entrySide === 'right') { ship.x = target.width - SHIP_RADIUS - 1; ship.y = entryExit.pos; }
+  else if (entrySide === 'top') { ship.y = SHIP_RADIUS + 1; ship.x = entryExit.pos; }
+  else { ship.y = target.height - SHIP_RADIUS - 1; ship.x = entryExit.pos; }
+}
+
 function handleRoomTransition(room) {
   if (!room) return;
-  if (ship.x - SHIP_RADIUS > room.width) {
-    const next = game.currentRoomIndex + 1;
-    if (next < game.rooms.length) {
-      game.currentRoomIndex = next;
-      ship.x = SHIP_RADIUS + 1;
-      ship.y = game.rooms[next].entranceY;
-      game.camX = 0;
-      game.camY = 0;
-      enemyProjectiles.length = 0;
-      missiles.length = 0;
-    }
-  } else if (ship.x + SHIP_RADIUS < 0) {
-    const prev = game.currentRoomIndex - 1;
-    if (prev >= 0) {
-      game.currentRoomIndex = prev;
-      const prevRoom = game.rooms[prev];
-      ship.x = prevRoom.width - SHIP_RADIUS - 1;
-      ship.y = prevRoom.exitY;
-      game.camX = Math.max(0, prevRoom.width - CANVAS_WIDTH);
-      game.camY = 0;
-      enemyProjectiles.length = 0;
-      missiles.length = 0;
-    }
+  for (const side of SIDES) {
+    const exit = room.exits[side];
+    if (!exit || !hasCrossedExit(room, side)) continue;
+
+    const target = game.rooms[exit.toRoomId];
+    const entrySide = OPPOSITE_SIDE[side];
+    placeShipAtEntry(target, entrySide, target.exits[entrySide]);
+
+    game.currentRoomId = target.id;
+    target.discovered = true;
+    enemyProjectiles.length = 0;
+    missiles.length = 0;
+    return;
   }
 }
 
@@ -185,18 +205,9 @@ function updatePlaying(dt) {
 
   if (input.isHeld('Space')) shoot();
 
-  const room = game.rooms[game.currentRoomIndex];
+  const room = game.rooms[game.currentRoomId];
   if (room) {
     resolveCollisions(room);
-    if (game.currentRoomIndex === game.rooms.length - 1 && escapeTimer < 0) {
-      const tExitTop = room.exitY - room.tunnelH / 2;
-      const tExitBot = room.exitY + room.tunnelH / 2;
-      if (ship.y + SHIP_RADIUS > tExitTop && ship.y - SHIP_RADIUS < tExitBot &&
-          ship.x + SHIP_RADIUS > room.width - 8) {
-        ship.x = room.width - 8 - SHIP_RADIUS;
-        if (ship.vx > 0) ship.vx = 0;
-      }
-    }
     updateEnemies(room, dt);
     updateProjectiles(room, dt);
     updateEnemyProjectiles(room, dt);
@@ -217,11 +228,14 @@ function updatePlaying(dt) {
 
   if (resources.energy <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
 
-  if (isReactorDestroyed(game.rooms.at(-1))) {
-    if (escapeTimer < 0) escapeTimer = ESCAPE_TIME;
+  if (isReactorDestroyed(game.reactorRoom)) {
+    if (escapeTimer < 0) {
+      const discoveredCount = game.rooms.filter(r => r.discovered).length;
+      escapeTimer = ESCAPE_TIME_PER_ROOM * discoveredCount;
+    }
     escapeTimer -= dt;
     if (escapeTimer <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
-    if (game.currentRoomIndex === game.rooms.length - 1 && ship.x - SHIP_RADIUS > game.rooms.at(-1).width) {
+    if (game.currentRoomId === 0) {
       stopAllLoops(); playWin(); game.setState(State.WIN); return;
     }
   }
@@ -362,19 +376,33 @@ function renderMenu(ctx) {
   ctx.fillText('ENTER oder LEERTASTE zum Starten', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
-function drawExitBarrier(ctx, room) {
-  const top = room.exitY - room.tunnelH / 2;
-  const bot = room.exitY + room.tunnelH / 2;
-  const stripeH = 8;
-  for (let y = top; y < bot; y += stripeH) {
-    const i = Math.floor((y - top) / stripeH);
-    ctx.fillStyle = i % 2 === 0 ? '#cc1111' : '#ffffff';
-    ctx.fillRect(room.width - 8, y, 8, Math.min(stripeH, bot - y));
+function drawMinimap(ctx) {
+  const layout = game.minimapLayout;
+  if (!layout) return;
+
+  const cell = MINIMAP_CELL, gap = MINIMAP_GAP;
+  const cols = layout.maxGx - layout.minGx + 1;
+  const rows = layout.maxGy - layout.minGy + 1;
+  const totalH = rows * cell + (rows - 1) * gap;
+  const originX = MINIMAP_MARGIN;
+  const originY = CANVAS_HEIGHT - MINIMAP_MARGIN - totalH;
+
+  for (const room of game.rooms) {
+    if (!room.discovered) continue;
+    const x = originX + (room.gx - layout.minGx) * (cell + gap);
+    const y = originY + (room.gy - layout.minGy) * (cell + gap);
+    const isCurrent = room.id === game.currentRoomId;
+
+    ctx.fillStyle = isCurrent ? '#ffffff' : 'rgba(255, 255, 255, 0.12)';
+    ctx.fillRect(x, y, cell, cell);
+    ctx.strokeStyle = isCurrent ? '#ffffff' : '#aaaaaa';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 0.75, y + 0.75, cell - 1.5, cell - 1.5);
   }
 }
 
 function renderPlaying(ctx) {
-  const room = game.rooms[game.currentRoomIndex];
+  const room = game.rooms[game.currentRoomId];
   if (!room) return;
 
   ctx.fillStyle = room.bgColor;
@@ -398,7 +426,6 @@ function renderPlaying(ctx) {
   ctx.save();
   ctx.translate(-game.camX + shakeX, -game.camY + shakeY);
   drawRoom(ctx, room);
-  if (game.currentRoomIndex === game.rooms.length - 1 && escapeTimer < 0) drawExitBarrier(ctx, room);
   drawReactor(ctx, room);
   drawPickups(ctx, room);
   drawSurvivors(ctx, room);
@@ -414,6 +441,7 @@ function renderPlaying(ctx) {
   ctx.restore();
 
   drawHUD(ctx);
+  drawMinimap(ctx);
 
   if (escapeTimer >= 0) {
     const secs = Math.ceil(escapeTimer);

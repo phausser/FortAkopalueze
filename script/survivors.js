@@ -1,4 +1,4 @@
-import { interpolateWall, lerp, makePRNG } from './level.js';
+import { interpolateWall, lerp, makePRNG, getExitClearZones, overlapsExitZonesX } from './level.js';
 import { ship } from './ship.js';
 import { addScore } from './score.js';
 import { spawnImpactParticles } from './particles.js';
@@ -11,13 +11,15 @@ const BODY_H = Math.round(BODY_W * Math.sqrt(3) / 2);
 export function spawnSurvivorsForLevel(rooms, seed, count) {
   for (const room of rooms) room.survivors = [];
   const rng = makePRNG(seed ^ 0xFACE);
-  const eligible = rooms.slice(0, -1);
+  const eligible = rooms.filter(r => r.type !== 'reactor');
   if (eligible.length === 0) return;
 
   for (let i = 0; i < count; i++) {
     for (let attempt = 0; attempt < 30; attempt++) {
       const room = eligible[Math.floor(rng() * eligible.length)];
       const x = room.width * lerp(0.1, 0.9, rng());
+      const zones = getExitClearZones(room.exits, room.width, room.height);
+      if (overlapsExitZonesX(zones, x, BODY_W)) continue;
       const floorY = interpolateWall(room.floorPoints, x);
       const ceilY = interpolateWall(room.ceilingPoints, x);
       if (floorY - ceilY < HEAD_R * 2 + BODY_H + 40) continue;

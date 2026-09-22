@@ -7,7 +7,7 @@ import {
 import { ship } from './ship.js';
 import { resources } from './resources.js';
 import { spawnImpactParticles } from './particles.js';
-import { interpolateWall, lerp } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
 import { enemyProjectiles } from './enemies.js';
 import { missiles } from './missiles.js';
 import { projectiles } from './projectiles.js';
@@ -30,13 +30,17 @@ export function spawnLasersForRoom(room, rng) {
   if (room.type === 'treasury' || room.type === 'reactor') return;
 
   const count = Math.floor(rng() * 3); // 0, 1 oder 2
+  const zones = getExitClearZones(room.exits, room.width, room.height);
   for (let i = 0; i < count; i++) {
-    const ax = room.width * lerp(0.2, 0.8, rng());
+    let ax, bx;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      ax = room.width * lerp(0.2, 0.8, rng());
+      // Diagonale: Boden-Emitter bis ±250px versetzt
+      const offset = (rng() - 0.5) * 500;
+      bx = Math.max(50, Math.min(room.width - 50, ax + offset));
+      if (!overlapsExitZonesX(zones, ax, 8) && !overlapsExitZonesX(zones, bx, 8)) break;
+    }
     const ay = interpolateWall(room.ceilingPoints, ax);
-
-    // Diagonale: Boden-Emitter bis ±250px versetzt
-    const offset = (rng() - 0.5) * 500;
-    const bx = Math.max(50, Math.min(room.width - 50, ax + offset));
     const by = interpolateWall(room.floorPoints, bx);
 
     room.lasers.push({
