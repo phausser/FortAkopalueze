@@ -49,6 +49,7 @@ Es gibt kein separates IDLE/DYING-Substate im Code — der Spieler wird durch In
 - **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Schild `−0.05` pro Wandkontakt, `0.5 s` Unverwundbarkeit (Schiff blinkt).
 - **Schub-Trail:** Partikel-Effekt aus dem Heck, solange `↑` gehalten wird.
 - **Beam-in:** beim Levelstart (Übergang `LEVEL_INTRO → PLAYING`) 1.2 s Einblende-Animation mit Teleport-Partikeln, Schiff fadet von unsichtbar zu sichtbar ein.
+- **Beam-out:** Erreicht der Spieler während der Escape-Phase den Startraum, friert die Steuerung sofort ein (`beamOutTimer = BEAM_IN_DURATION`) und dieselbe Partikel-Animation läuft rückwärts — Schiff fadet über 1.2 s von sichtbar zu unsichtbar aus, bevor `State.WIN` aktiviert wird.
 
 ### Interaktionen
 

@@ -35,6 +35,7 @@ const game = {
 
 let thrustTrailTimer = 0;
 let beamInTimer = 0;
+let beamOutTimer = 0;
 let escapeTimer = -1;
 let winBonus = null;
 
@@ -65,6 +66,7 @@ function initLevel(level) {
   resetShip(game.rooms[0]);
   resetResources();
   escapeTimer = -1;
+  beamOutTimer = 0;
   winBonus = null;
   resetRescuedCount();
   startMusic();
@@ -183,6 +185,16 @@ function spawnBeamParticle() {
 }
 
 function updatePlaying(dt) {
+  if (beamOutTimer > 0) {
+    beamOutTimer = Math.max(0, beamOutTimer - dt);
+    for (let i = 0; i < 3; i++) spawnBeamParticle();
+    updateParticles(dt);
+    if (beamOutTimer <= 0) {
+      stopAllLoops(); playWin(); startWinBonus(); game.setState(State.WIN);
+    }
+    return;
+  }
+
   if (beamInTimer > 0) {
     beamInTimer = Math.max(0, beamInTimer - dt);
     for (let i = 0; i < 3; i++) spawnBeamParticle();
@@ -277,7 +289,9 @@ function updatePlaying(dt) {
     escapeTimer -= dt;
     if (escapeTimer <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
     if (game.currentRoomId === 0) {
-      stopAllLoops(); playWin(); startWinBonus(); game.setState(State.WIN); return;
+      stopThrust();
+      beamOutTimer = BEAM_IN_DURATION;
+      return;
     }
   }
 
@@ -481,9 +495,16 @@ function renderPlaying(ctx) {
   drawProjectiles(ctx);
   drawParticles(ctx);
   if (beamInTimer > 0) ctx.globalAlpha = 1 - beamInTimer / BEAM_IN_DURATION;
+  else if (beamOutTimer > 0) ctx.globalAlpha = beamOutTimer / BEAM_IN_DURATION;
   drawShip(ctx);
   ctx.globalAlpha = 1;
   ctx.restore();
+
+  if (escapeTimer >= 0) {
+    const pulse = 0.06 + 0.05 * Math.sin(performance.now() / 450);
+    ctx.fillStyle = `rgba(200, 0, 0, ${pulse.toFixed(3)})`;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  }
 
   drawHUD(ctx);
   drawMinimap(ctx);
