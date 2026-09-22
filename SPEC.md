@@ -208,7 +208,7 @@ Alle Gegner haben `hp`, ein geometrisches Sprite, eine Kollisionsbox und hinterl
 - Sobald der Reaktor zerstört ist, startet ein Countdown: `5 s × Anzahl bereits entdeckter Räume` (dynamisch, keine feste Zeit und keine Schwierigkeitsgrad-Skalierung).
 - Räume werden **nicht** neu bevölkert — bereits besiegte Gegner bleiben besiegt.
 - Anzeige: große Ziffer in der Bildschirmmitte, ab `≤ 3 s` rot.
-- Solange der Countdown läuft, pulsiert ein dünner, rötlicher Vollbild-Overlay (`rgba(200,0,0,α)`, `α` oszilliert sanft über echte Zeit via `sin`) über der Spielwelt — HUD, Minimap und Countdown-Text bleiben davon unbeeinflusst, da sie darüber gezeichnet werden.
+- Solange der Countdown läuft, pulsiert ein kräftiger roter Vollbild-Overlay im additiven Blend-Modus (`globalCompositeOperation = 'lighter'`, `rgba(255,20,20,α)`, `α` oszilliert über echte Zeit via `sin`) über der Spielwelt — additiv, damit auch schwarze Flächen (Höhlenwände) sichtbar rötlich einfärben statt reine Alpha-Überblendung. HUD, Minimap und Countdown-Text bleiben davon unbeeinflusst, da sie darüber gezeichnet werden.
 - Ziel: Startraum (Raum-ID 0) erreichen, bevor der Countdown abläuft.
 - Bei `t = 0`: `State.DEAD` („GAME OVER"-Screen, kein spezifischer Todesgrund-Text).
 - Bei rechtzeitigem Erreichen des Startraums: Schiff und Steuerung frieren ein, ein „Beam-out" (Partikel-Effekt + Alpha-Fade `1 → 0`, exakte Umkehrung des Level-Start-„Beam-in", Dauer `BEAM_IN_DURATION`) lässt das Schiff verschwinden — erst danach schaltet das Spiel auf `State.WIN`.

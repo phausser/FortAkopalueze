@@ -501,9 +501,12 @@ function renderPlaying(ctx) {
   ctx.restore();
 
   if (escapeTimer >= 0) {
-    const pulse = 0.06 + 0.05 * Math.sin(performance.now() / 450);
-    ctx.fillStyle = `rgba(200, 0, 0, ${pulse.toFixed(3)})`;
+    const pulse = 0.2 + 0.19 * Math.sin(performance.now() / 450);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = `rgba(255, 20, 20, ${Math.max(0, pulse).toFixed(3)})`;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.restore();
   }
 
   drawHUD(ctx);
