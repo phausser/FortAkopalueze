@@ -536,13 +536,15 @@ function renderWin(ctx) {
 
   if (winBonus) {
     const BONUS_GRAY = '#aaaaaa';
-
     ctx.font = '16px "Michroma", sans-serif';
     ctx.fillStyle = BONUS_GRAY;
     ctx.textAlign = 'center';
-    ctx.fillText(`${SCORE_TIME_BONUS_PER_SEC} × ${winBonus.secondsShown}s`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 55);
 
-    if (winBonus.rescuedTotal > 0) {
+    if (winBonus.secondsTotal > 0) {
+      ctx.fillText(`${SCORE_TIME_BONUS_PER_SEC} × ${winBonus.secondsShown}s`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 55);
+    }
+
+    if (winBonus.rescuedTotal > 0 && winBonus.phase !== 'seconds') {
       const y = CANVAS_HEIGHT / 2 - 15;
       const label = `${SCORE_SURVIVOR} × `;
       const iconSpacing = 29;
