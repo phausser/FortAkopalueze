@@ -3,79 +3,84 @@
 ## Phase 1 – Fundament
 
 - [x] **1. Projektstruktur & Canvas-Grundgerüst**
-  HTML-Datei mit Canvas-Element anlegen, Game-Loop (requestAnimationFrame), Input-Handler für Tastatur, grundlegendes State-Management (menu, playing, dead, escape, win).
+  HTML-Datei mit Canvas-Element anlegen, Game-Loop (requestAnimationFrame), Input-Handler für Tastatur, grundlegendes State-Management (menu, level_intro, playing, dead, win — `escape` existiert als Enum-Wert, wird aber nicht genutzt, siehe SPEC.md).
 
 - [x] **2. Hubschrauber – Bewegung & Physik**
-  Spieler-Entity mit Position, Geschwindigkeit, Trägheit. Thrust nach oben/unten, Drift links/rechts. Gravitation zieht den Heli langsam nach unten. Kollisionsbox. Sprite als geometrische Form (Rechteck + Rotor-Linien).
+  Spieler-Entity mit Position, Geschwindigkeit, Trägheit. Thrust in/gegen Blickrichtung, Strafe senkrecht dazu via Shift. Keine Gravitation. Kollisionsbox (Kreis). Sprite als Delta-Dreieck.
 
-- [x] **3. Ressourcen-System (Energie, Munition, Treibstoff)**
-  Drei Ressourcen-Balken: HP (Treffer), Ammo (Schüsse), Fuel (Fliegen). Fuel sinkt kontinuierlich beim Fliegen/Thrusten, Ammo pro Schuss, HP bei Kollision/Treffern. Game-Over wenn eine Ressource auf 0 fällt.
+- [x] **3. Ressourcen-System (Energie, Schild, Munition)**
+  Drei Ressourcen-Balken: Energie, Schild, Munition (0.0–1.0). Energie sinkt beim Thrusten, Schild bei Treffern, Munition pro Schuss (regeneriert automatisch mit der Zeit). Game-Over wenn Energie auf 0 fällt.
 
 - [x] **4. HUD – Anzeige der Ressourcen & Spielstatus**
-  Minimalistisches HUD am Rand: Energie-/Fuel-/Ammo-Balken als geometrische Segmente. Raumzähler (aktueller Raum / Gesamt). Countdown-Timer (nur aktiv in Escape-Phase). Score.
+  Minimalistisches HUD am Rand: Energie-/Schild-/Munitions-Balken als geometrische Segmente. Score oben rechts (6-stellig). Escape-Countdown groß mittig, wenn aktiv.
 
 ## Phase 2 – Welt
 
-- [x] **5. Prozeduraler Höhlen-/Raumgenerator**
-  Jeder Raum ist ein Rechteck mit zufälligen Fels-Vorsprüngen (Polygone oben/unten). Eingang links, Ausgang rechts (oder oben/unten für Varianten). Übergänge zwischen Räumen als schmale Tunnel. Seed-basiert, damit Level reproduzierbar sind. 8–12 Räume pro Durchgang, letzter Raum enthält Reaktor.
+- [x] **5. Prozeduraler Höhlen-Graph**
+  Räume liegen auf einem Gitter als Baum: garantierter Hauptpfad Start → Reaktor plus Sackgassen-Räume. Ausgänge auf allen vier Seiten möglich (links/rechts als Tunnel, oben/unten als organisch verrampte Kerben). Seed-basiert (`Date.now()` pro Levelstart). Raumzahl = `Level + 1` (kein fester 8–12-Bereich mehr, siehe Item 23).
 
 - [x] **6. Kollisionserkennung mit Höhlenwänden**
-  AABB- oder Polygon-Kollision zwischen Heli und Raum-Geometrie. Bei Kollision: HP-Abzug, kurzer Knockback. Wände dürfen nicht durchdrungen werden (Sliding-Kollision).
+  Segment-Normalen-Kollision zwischen Heli und Decke/Boden/Hindernissen/Raumkanten. Bei Kollision: Schild-Abzug, Velocity-Reflexion (Sliding-Kollision), kurze Unverwundbarkeit.
 
 - [x] **7. Schuss-System des Spielers**
-  Spieler feuert Projektile nach rechts (primär) und optional nach links/oben. Projektil als kleines Rechteck mit Leuchteffekt. Verbraucht Munition. Projektile verschwinden bei Wandkollision oder nach maximaler Reichweite.
+  Spieler feuert Projektile in Blickrichtung. Linie mit Leuchteffekt. Verbraucht Munition. Projektile verschwinden bei Wand-/Hindernis-/Gegnerkollision, keine Reichweitenbegrenzung.
 
-- [x] **16. Kamera & Scrolling**
-  Kamera folgt dem Heli innerhalb eines Raums (oder Raum ist komplett sichtbar bei kleiner Größe). Beim Raumwechsel: kurze Übergangsanimation (Fade oder Slide). Raum-Koordinatensystem unabhängig von Canvas-Größe.
+- [x] **16. Kamera, Scrolling & Minimap**
+  Kamera folgt dem Heli innerhalb eines Raums, geclampt auf Raumgrenzen. Raumwechsel: sofortiger Schnitt (kein Fade — weiterhin offen, siehe unten). Zwei geblurrte Parallax-Ebenen, Screen-Shake bei Reaktor-Treffern/-Explosion. Minimap unten links zeigt entdeckte Räume des Höhlen-Graphs.
 
 ## Phase 3 – Feinde
 
 - [x] **8. Feind-Typ 1: Gegnerischer Hubschrauber**
-  Patrouilliert horizontal im Raum, dreht um bei Wandkontakt. Einfache KI: fliegt auf Spieler zu wenn in Sichtweite, schießt periodisch. Geometrisches Sprite (kleines Rechteck + Linien in anderer Farbe).
+  Patrouilliert horizontal, dreht bei Raumgrenze um. Verfolgt Spieler in Sichtweite, schießt periodisch. Geometrisches Sprite (weißes Quadrat).
 
-- [x] **9. Feind-Typ 2: Bodenkanone / Wandgeschütz**
-  Stationär an Wand/Boden/Decke befestigt. Dreht Lauf zum Spieler, feuert Projektile in kurzen Intervallen. Kann zerstört werden. Geometrisch: Kreis + drehender Strich.
+- [x] **9. Feind-Typ 2: Wandgeschütz**
+  Stationär an Boden/Decke. Dreht Lauf zum Spieler bei freier Sichtlinie, feuert seit dem Cave-Graph-Update eine **homing Rakete** statt eines direkten Projektils. Zerstörbar.
 
-- [x] **10. Feind-Typ 3: Rakete / Heimsuchungsgeschoss**
-  Wird von Raketenwerfer-Gegner abgefeuert und verfolgt den Spieler. Langsamere Kurskorrektur. Explodiert bei Kollision (Splash-Schaden). Geometrisch: Dreieck mit weißem Partikel-Trail.
+- [x] **10. Feind-Typ 3: Mine + Rakete**
+  Der ursprünglich geplante stationäre „Raketenwerfer" wurde zur kontaktzündenden **Mine** (detoniert selbst bei Annäherung, feuert nichts ab). Die homing-Rakete existiert weiterhin, wird aber jetzt vom Wandgeschütz (Item 9) abgefeuert. Raketen sind durch Spieler-Projektile nicht abschießbar — nur durch Laserkontakt, Lebensdauer-Ablauf oder Zerstören des Turrets vermeidbar.
 
 - [x] **11. Feind-Typ 4: Laser-Barriere**
-  Gepulster Laserstrahl von Decke zu Boden, auch diagonal. Zufällig 0.5–2 s an / 1–5 s aus. Schaden 0.01/frame ohne Unverwundbarkeit. Zerstört Spieler- und Gegner-Projektile sowie Raketen. Emitter einzeln zerstörbar (4 HP). Geometrisch: weiße Linie mit Glow, 8×8 px Emitter-Rechtecke.
+  Gepulster Laserstrahl von Decke zu Boden, auch diagonal. Zufällig 0.5–2 s an / 1–5 s aus. Schaden 2.0 Energie/s direkt, ohne Unverwundbarkeit. Zerstört Spieler- und Gegner-Projektile sowie Raketen. Emitter einzeln zerstörbar (4 HP je Emitter).
 
 ## Phase 4 – Spielablauf
 
 - [x] **13. Extras / Power-ups**
-  Drei Typen: Energie-Kugel (blau), Schild-Kugel (grün), Munitions-Kugel (gelb). Erscheinen zufällig in Räumen (0–2, nicht im letzten Raum). Aufsammeln durch Überfahren (+0.25 pro Pickup). Geometrisch als Kugeln mit Halbmond-Schatten und Glanzpunkt.
+  Drei Typen: Energie-, Schild-, Munitions-Kugel. 2–3 pro Raum, erste garantiert Energie. Aufsammeln durch Überfliegen (+0.25 pro Pickup).
 
 - [x] **14. Reaktor-Raum & Zerstörungssequenz**
-  Letzter Raum enthält zentralen Reaktor (großes geometrisches Objekt, pulsiert). Benötigt mehrere Treffer zum Zerstören. Nach Zerstörung: dramatische Explosion mit Screen-Shake und Partikel-Burst. Win-Screen erscheint nach Ablauf der Explosions-Animation. Reaktorkern-Kontakt tötet den Spieler (~0.5s), Laser tötet ebenfalls in ~0.5s (beide umgehen Shield + Unverwundbarkeit).
+  Letzter Raum des Hauptpfads enthält zentralen Reaktor (Atom-Symbol-Optik, rotierende Orbitringe). 25 Treffer zum Zerstören. Nach Zerstörung: Explosionssequenz mit Screen-Shake und Partikel-Burst (250), danach startet die Escape-Phase. Reaktorkern-Kontakt und Laser-Kontakt ziehen beide kontinuierlich Energie ab (umgehen Schild + Unverwundbarkeit) statt eines fixen Instant-Schadens.
 
-- [ ] **23. Level-System**
-  Level 1 = 2 Räume, Level 2 = 3 Räume, Level N = N+1 Räume. Nach Reaktorzerstörung: Win-Screen zeigt „Reaktor zerstört. Mit ENTER oder LEERTASTE zum Level X". Beim Levelstart kurze Einblendung „Level X. Zerstöre den Reaktor" (2–3 s). Alle Ressourcen werden zu Levelstart vollständig aufgeladen. Score läuft über alle Level weiter.
+- [x] **23. Level-System**
+  Level N hat `N + 1` Räume. Nach Reaktorzerstörung + Escape: Win-Screen zeigt „Mit ENTER oder LEERTASTE zum Level X". Levelstart zeigt „Level X – Zerstöre den Reaktor" (2.5 s, überspringbar). Ressourcen werden zu Levelstart vollständig aufgeladen. Score läuft über alle Level weiter, setzt nur bei neuem Spiel aus dem Menü zurück.
 
-- [ ] **15. Escape-Phase: 30-Sekunden-Countdown**
-  Countdown läuft, Spieler muss zurück zum Eingangs-Raum (Ausgang markiert, Pfeil-Hinweis). Räume füllen sich mit mehr Gegnern/Hindernissen. Bei 0 Sekunden: Explosion, Game-Over. Bei rechtzeitigem Erreichen: Win-Screen.
+- [x] **15. Escape-Phase: Countdown nach Reaktorzerstörung**
+  Countdown läuft dynamisch (`5 s × Anzahl entdeckter Räume`, keine feste Zeit). Spieler muss zurück zum Startraum. Bei 0 Sekunden: `State.DEAD`. Bei rechtzeitigem Erreichen: `State.WIN`. **Abweichung vom ursprünglichen Plan:** Räume werden beim Rückweg *nicht* mit mehr Gegnern neu bevölkert — bereits besiegte Gegner bleiben besiegt.
+
+- [x] **24. Überlebende (Rescue-Mechanik)** *(nicht ursprünglich geplant, zusätzlich umgesetzt)*
+  Pro Level werden `Level`-viele Überlebende in Nicht-Reaktor-Räumen platziert. Einsammeln durch Anflug (35 px) gibt +500 Score. Rein optional, kein Zeitdruck.
 
 ## Phase 5 – Polishing
 
 - [x] **12. Partikel- & Effekt-System**
-  Generisches Partikel-System implementiert: Treffer-Funken, Raketen-Trail, Explosions-Burst. Partikel mit Lebensdauer, Geschwindigkeit, Alpha-Fade-out. `maxLife`-Feld für variable Lebensdauern.
+  Generisches Partikel-System implementiert: Treffer-Funken, Schub-Trail, Raketen-Trail, Minen-/Reaktor-Explosions-Burst, Level-Intro-„Beam-in". Partikel mit Lebensdauer, Geschwindigkeit, Alpha-Fade-out, optionalem `maxLife`/`color`-Feld.
 
 - [ ] **17. Visuelles Styling & Atmosphäre**
-  Dunkler Hintergrund, Höhlenwände in dunkelgrau/anthrazit. Spieler-Heli in hellem Cyan/Weiß. Feinde in Orange/Rot. Extras in Signalfarben. Glow-Effekte via Canvas-shadowBlur. Scan-Line-Overlay optional für Retro-Look. Flackernde Beleuchtung in Räumen.
+  Erledigt: dunkler Hintergrund, Wände schwarz, weißes Schiff/Gegner/HUD, Glow via `shadowBlur`, zwei Parallax-Blur-Ebenen, Screen-Shake, Google-Font „Michroma" für UI-Text.
+  Offen: Scan-Line-Overlay für Retro-Look, flackernde Raumbeleuchtung.
 
-- [ ] **18. Sound-Effekte (Web Audio API)**
-  Synthetische Sounds ohne externe Dateien: Rotor-Hum (Oszillator), Schuss (kurzer Noise-Burst), Explosion (tiefer Noise-Sweep), Treffer (kurzer Ton), Alarm/Countdown-Piep, Pickup-Sound. Lautstärke-Regler.
+- [x] **18. Sound-Effekte (Web Audio API)**
+  Erledigt: Rotor-Hum (Loop), Schuss, Treffer, Wandkollision, Tod, Gegner-Tod, Raketen-Abschuss/-Explosion, Minen-Alarm/-Explosion, Laser-Emitter-Zerstörung, Laser-Kontakt (Loop), Reaktor-Treffer/-Explosion, Pickup (je Ressourcentyp), Sieg-Fanfare, Game-Over — alles synthetisch. Zusätzlich eine Hintergrundmusik-Loop aus einer externen MP3-Datei (`sound/reactor-under-ice.mp3`).
+  Offen: Alarm-Sirene / Countdown-Piep für die Escape-Phase, Lautstärke-Regler.
 
 - [ ] **19. Menü, Game-Over & Win-Screen**
-  Start-Screen mit Titel, Steuerungshinweisen, Start-Button. Game-Over-Screen: Todesursache (kein Fuel, kein HP, Zeit abgelaufen), Score, Neustart. Win-Screen: Score, Zeit, Neustart. Alles im gleichen geometrischen Stil.
+  Erledigt: Start-Screen mit Titel + Start-Hinweis, generischer Game-Over-Screen mit Neustart-Hinweis, Win-Screen mit Weiter-zum-nächsten-Level-Hinweis.
+  Offen: Todesursache im Game-Over-Screen (kein Fuel/Schild/Zeit-Text, nur „GAME OVER"), Score-Anzeige auf Game-Over/Win-Screen.
 
 - [ ] **20. Schwierigkeitsgrade & Balancing**
-  Drei Stufen (Easy/Normal/Hard): Feind-Anzahl, Feind-Schussrate, Fuel-Verbrauch, Munition variieren. Extras seltener auf Hard. Reaktor-HP höher. Werte in einer Konfig-Tabelle zentralisieren für einfaches Tuning.
+  Nicht implementiert — es gibt keine Easy/Normal/Hard-Auswahl. Einzige Skalierung: Gegneranzahl steigt mit der Raumtiefe im Höhlen-Graph, sowie Raum-/Überlebendenzahl pro Level.
 
 - [ ] **21. Highscore & LocalStorage**
-  Top-5-Scores im LocalStorage speichern. Highscore-Tabelle im Menü anzeigen.
-  Score-Grundsystem implementiert: `score.js`, +100/Feind, +5000/Reaktor, 6-stellige HUD-Anzeige oben rechts.
+  Nicht implementiert — kein `localStorage`-Zugriff im Code. Score-Grundsystem vorhanden: `score.js`, +100/Gegner, +500/Überlebender, +5000/Reaktor, 6-stellige HUD-Anzeige oben rechts, läuft über Level weiter.
 
 - [ ] **22. Mobile-/Gamepad-Support** *(optional)*
-  Gamepad API für Controller-Support. On-Screen-Buttons für Touch-Geräte (vier Richtungen + Feuer). Canvas skaliert responsiv per CSS.
+  Gamepad API für Controller-Support. On-Screen-Buttons für Touch-Geräte (vier Richtungen + Feuer). Canvas ist aktuell fix 1024×768 px ohne CSS-Viewport-Scaling.
