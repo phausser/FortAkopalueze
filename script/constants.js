@@ -76,7 +76,7 @@ export const REACTOR_SHAKE_HIT = 6;
 export const REACTOR_SHAKE_EXPLODE = 20;
 export const REACTOR_ELECTRON_R = 4;
 
-export const BEAM_IN_DURATION = 1.2;
+export const BEAM_IN_DURATION = 2.4;
 export const ESCAPE_TIME_PER_ROOM = 5; // Sekunden pro entdecktem Raum
 
 export const SCORE_ENEMY = 100;
