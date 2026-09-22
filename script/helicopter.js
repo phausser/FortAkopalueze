@@ -4,12 +4,14 @@ import {
   ENEMY_FLEE_DIST, ENEMY_MIN_DIST, ENEMY_FIRE_RATE, ENEMY_PROJ_SPEED, ENEMY_DMG,
 } from './constants.js';
 import { ship, applyDamage } from './ship.js';
-import { interpolateWall, lerp } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
 import { playEnemyShoot } from './sound.js';
 
 export function spawnHelicopter(room, rng) {
+  const zones = getExitClearZones(room.exits, room.width, room.height);
   for (let attempt = 0; attempt < 12; attempt++) {
     const x = room.width * lerp(0.2, 0.8, rng());
+    if (overlapsExitZonesX(zones, x, ENEMY_HALF * 2)) continue;
     const ceilY = interpolateWall(room.ceilingPoints, x);
     const floorY = interpolateWall(room.floorPoints, x);
     if (floorY - ceilY < ENEMY_HALF * 2 + 40) continue;

@@ -3,27 +3,32 @@ import {
   TURRET_BODY_R, TURRET_BARREL_L,
 } from './constants.js';
 import { ship } from './ship.js';
-import { interpolateWall, lerp } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
 import { spawnMissile } from './missiles.js';
 import { hasLineOfSight, wrapAngle } from './geometry.js';
 
 export function spawnTurret(room, rng) {
-  const x = room.width * lerp(0.15, 0.85, rng());
-  const onFloor = rng() < 0.5;
-  const wallY = onFloor
-    ? interpolateWall(room.floorPoints, x)
-    : interpolateWall(room.ceilingPoints, x);
-  return {
-    kind: 'turret',
-    x,
-    y: wallY,
-    mount: onFloor ? 'floor' : 'ceiling',
-    angle: onFloor ? -Math.PI / 2 : Math.PI / 2,
-    hp: TURRET_HP,
-    state: 'idle',
-    fireCooldown: rng() * TURRET_FIRE_RATE,
-    dyingTimer: 0,
-  };
+  const zones = getExitClearZones(room.exits, room.width, room.height);
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const x = room.width * lerp(0.15, 0.85, rng());
+    if (overlapsExitZonesX(zones, x, TURRET_BODY_R * 2)) continue;
+    const onFloor = rng() < 0.5;
+    const wallY = onFloor
+      ? interpolateWall(room.floorPoints, x)
+      : interpolateWall(room.ceilingPoints, x);
+    return {
+      kind: 'turret',
+      x,
+      y: wallY,
+      mount: onFloor ? 'floor' : 'ceiling',
+      angle: onFloor ? -Math.PI / 2 : Math.PI / 2,
+      hp: TURRET_HP,
+      state: 'idle',
+      fireCooldown: rng() * TURRET_FIRE_RATE,
+      dyingTimer: 0,
+    };
+  }
+  return null;
 }
 
 export function updateTurret(e, room, dt) {

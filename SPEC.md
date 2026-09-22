@@ -88,7 +88,7 @@ Laser-Kontakt und Reaktor-Körperkontakt ziehen `2.0 Energie/s` **direkt** ab (k
 - Räume liegen auf einem quadratischen Gitter und bilden einen **Baum**, keine lineare Kette: ein garantierter Hauptpfad vom Startraum zum Reaktorraum, plus einzelne Sackgassen-Räume, die von Hauptpfad-Räumen abzweigen (nicht vom Reaktorraum).
 - Hauptpfad-Länge: zufällig zwischen `MAIN_PATH_MIN = 3` und `max(MAIN_PATH_MAX = 6, ⌈Raumzahl × 0.6⌉)`.
 - Jeder Raum kann Ausgänge auf **bis zu allen vier Seiten** haben (links/rechts als horizontale Tunnel, oben/unten als vertikale Kerben). Der Reaktorraum liegt immer am Ende des Hauptpfads.
-- Vor jedem Ausgang wird eine Freihaltezone reserviert, in der keine Hindernisse, Pickups, Laser oder Überlebenden-NPCs platziert werden.
+- Vor jedem Ausgang wird eine Freihaltezone reserviert, in der keine Hindernisse, Pickups, Laser, Gegner oder Überlebenden-NPCs platziert werden.
 
 ### Raum-Geometrie (prozedural)
 
@@ -129,6 +129,7 @@ Alle Gegner haben `hp`, ein geometrisches Sprite, eine Kollisionsbox und hinterl
 - Keine Gegner in Schatzkammer-Räumen.
 - Normale Räume: `1 + zufällig(0–1) + ⌊(Tiefe / max. Tiefe) × 3⌋` Gegner — die Anzahl wächst also mit der Entfernung vom Startraum entlang des Hauptpfads (1–2 in Startnähe, bis zu 4–5 kurz vor dem Reaktor). Pro Slot: 20 % Mine, 35 % Wandgeschütz, 45 % Feind-Hubschrauber.
 - Reaktorraum: 4–6 Gegner. Pro Slot: 25 % Wandgeschütz, 30 % Mine, 45 % Feind-Hubschrauber.
+- Spawn-Positionen meiden die Ausgangs-Freihaltezonen (12 Platzierungsversuche, danach entfällt der Gegner ersatzlos).
 
 ### Gegner-Typ 1: Feind-Hubschrauber
 

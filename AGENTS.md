@@ -368,7 +368,7 @@ Wird ausschließlich vom Spieler verwendet (Gegner-Projektile sind ein separates
 
 Beim Generieren eines Raums wird folgendes platziert (Reihenfolge in `game.js: initLevel`):
 
-1. **Gegner:** siehe SPEC.md „Gegner → Spawn-Logik". Keine Gegner in Schatzkammer-Räumen; 4–6 im Reaktorraum.
+1. **Gegner:** siehe SPEC.md „Gegner → Spawn-Logik". Keine Gegner in Schatzkammer-Räumen; 4–6 im Reaktorraum; nie in einer Ausgangs-Freihaltezone (Helikopter, Turret, Mine geben nach 12 erfolglosen Versuchen auf und spawnen nicht).
 2. **Laser-Barrieren:** 0–2 pro Raum, nie in Schatzkammer/Reaktor, nie in einer Ausgangs-Freihaltezone.
 3. **Extras:** 2–3 pro Raum, außerhalb der Ausgangs-Freihaltezonen.
 4. **Reaktor:** nur im letzten Raum des Hauptpfads, zentriert. Pickups des Reaktorraums werden nach der Generierung geleert.

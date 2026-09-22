@@ -4,12 +4,14 @@ import {
 } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { particles, spawnImpactParticles } from './particles.js';
-import { interpolateWall, lerp } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
 import { playMineAlert, playMineExplode } from './sound.js';
 
 export function spawnMine(room, rng) {
+  const zones = getExitClearZones(room.exits, room.width, room.height);
   for (let attempt = 0; attempt < 12; attempt++) {
     const x = room.width * lerp(0.2, 0.8, rng());
+    if (overlapsExitZonesX(zones, x, MINE_RADIUS * 2)) continue;
     const ceilY = interpolateWall(room.ceilingPoints, x);
     const floorY = interpolateWall(room.floorPoints, x);
     if (floorY - ceilY < MINE_RADIUS * 2 + 40) continue;
