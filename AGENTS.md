@@ -6,21 +6,19 @@ Dieses Dokument beschreibt alle aktiven Spielobjekte (Agents) im Spiel: ihre Zus
 
 ## Gemeinsames Entity-Interface
 
-Alle Agents implementieren folgende Basis-Felder und Methoden:
+Gegner (`room.enemies`) teilen sich ein loses gemeinsames Shape, kein Klassen-Interface:
 
 ```js
 {
+  kind,          // 'helicopter' | 'turret' | 'mine'
   x, y,          // Position (Weltkoordinaten)
-  vx, vy,        // Geschwindigkeit (px/frame)
-  width, height, // Kollisionsbox
-  hp,            // Aktuelle Trefferpunkte (0 = tot)
-  alive,         // Boolean, wird false wenn hp <= 0
-  update(dt),    // Logik-Update pro Frame
-  draw(ctx),     // Rendering auf Canvas
-  onHit(damage), // Eingehender Schaden
-  onDeath(),     // Aufräumen, Partikel, Score
+  hp,            // Aktuelle Trefferpunkte
+  state,         // z.B. 'patrol' | 'chase' | 'idle' | 'tracking' | 'alert' | 'dying'
+  dyingTimer,    // Countdown fürs Blink-Sterben (0.5 s)
 }
 ```
+
+Update/Draw laufen über zentrale Dispatcher in `enemies.js` (`updateEnemies`/`drawEnemies`), die je nach `kind` an `helicopter.js`, `turret.js` oder `mine.js` delegieren. Andere Agents (Missile, LaserBarrier, Reactor, Pickup, Survivor) haben jeweils ihr eigenes, spezifisches Shape in ihrem Modul.
 
 ---
 
@@ -31,43 +29,41 @@ Alle Agents implementieren folgende Basis-Felder und Methoden:
 | Feld | Wert |
 |---|---|
 | Sprite | Delta-Dreieck (Outline), Spitze vorne, 2 Punkte hinten — weiß `#ffffff`, `lineWidth 6` |
-| Farbe | Weiß `#ffffff` |
-| Energie | 0.0–1.0; sinkt um `0.035/s` beim Thrusten |
-| Schild | 0.0–1.0; sinkt bei Treffern (Projektile, Kollision, Laser); bei 0 nächster Treffer = Tod |
-| Munition | 0.0–1.0 (80 Schüsse = voll); kein Schuss wenn leer |
+| Energie | 0.0–1.0; sinkt um `0.0175/s` beim Thrusten |
+| Schild | 0.0–1.0; sinkt bei Treffern (Projektile, Kollision, Raketen-/Minen-Splash); bei 0 nächster (nicht-direkter) Treffer = Tod |
+| Munition | 0.0–1.0 (80 Schüsse = voll); regeneriert automatisch mit `+1/120 pro Sekunde`; kein Schuss wenn leer |
 | Kollisionsradius | 12 px (Kreis) |
 
 ### Zustandsmaschine
 
 ```
-IDLE ──thrust──→ FLYING
-FLYING ──no input──→ IDLE (Trägheit läuft aus)
-FLYING ──fire──→ FIRING (1-Frame-Zustand, dann zurück)
-any ──hp=0──→ DYING
-any ──fuel=0──→ DYING
-DYING ──animation done──→ [State: DEAD]
+FLYING (immer aktiv) ──hp=0──→ [State: DEAD]
 ```
+
+Es gibt kein separates IDLE/DYING-Substate im Code — der Spieler wird durch Input direkt bewegt, Tod löst sofort den globalen `State.DEAD` aus (kein Todesanimations-State).
 
 ### Verhalten
 
-- **Bewegung:** `←`/`→` rotiert das Schiff, `↑`/`↓` addiert Schub in/gegen Blickrichtung. `Shift`+`←`/`→` gleitet senkrecht zur Blickrichtung (Strafe, 180 px/s, keine Rotation). Geschwindigkeit wird dt-basiert gedämpft (`SHIP_DAMPING = 0.99`). Keine Gravitation.
-- **Schießen:** `Space` feuert Projektil aus der Schiffspitze in Blickrichtung. Feuerrate: 5/s (`FIRE_COOLDOWN = 0.2 s`). Kostet 1/80 Munition.
-- **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Schild −0.05 pro Wandkontakt, 0.5 s Unverwundbarkeit (Schiff blinkt).
-- **Energie-Verbrauch:** `ENERGY_DRAIN = 0.035/s` solange ↑ oder ↓ gehalten wird.
-- **Rauch-Effekt:** noch nicht implementiert.
+- **Bewegung:** `←`/`→` rotiert das Schiff (`3.0 rad/s`), `↑`/`↓` addiert Schub (`250 px/s²`) in/gegen Blickrichtung. `Shift`+`←`/`→` gleitet senkrecht zur Blickrichtung (Strafe, `180 px/s`, keine Rotation). Geschwindigkeit wird dt-basiert gedämpft (`SHIP_DAMPING = 0.99`). Keine Gravitation.
+- **Schießen:** `Space` feuert Projektil aus der Schiffspitze in Blickrichtung. Feuerrate 5/s (`FIRE_COOLDOWN = 0.2 s`). Kostet `1/80` Munition.
+- **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Schild `−0.05` pro Wandkontakt, `0.5 s` Unverwundbarkeit (Schiff blinkt).
+- **Schub-Trail:** Partikel-Effekt aus dem Heck, solange `↑` gehalten wird.
+- **Beam-in:** beim Levelstart (Übergang `LEVEL_INTRO → PLAYING`) 1.2 s Einblende-Animation mit Teleport-Partikeln, Schiff fadet von unsichtbar zu sichtbar ein.
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
 | Wand | −0.05 Schild, Bounce, 0.5 s Unverwundbarkeit |
-| Feind-Projektil | −0.08 Schild, 0.5 s Unverwundbarkeit |
+| Feind-Projektil (Helikopter) | −0.08 Schild, 0.5 s Unverwundbarkeit |
 | Feind-Hubschrauber (Kollision) | −0.08 Schild |
-| Laser | −0.01 Schild/frame (kein Unverwundbarkeits-Fenster) |
-| Rakete (Splash) | −0.2 Schild |
-| Extra/Power-up | Ressource auffüllen |
-| Reaktor (Kollision) | -10 HP |
-| Ausgang (Escape-Phase) | → WIN |
+| Rakete (Splash, `< 40 px`) | −0.2 Schild |
+| Mine (Splash, `< 100 px`, Distanz-Falloff) | bis −0.5 Schild |
+| Laser (im Strahl) | −2.0 Energie/s, direkt (kein Schild, keine Unverwundbarkeit) |
+| Reaktor (Körperkontakt) | −2.0 Energie/s, direkt (kein Schild, keine Unverwundbarkeit) |
+| Extra/Power-up | Ressource +0.25 |
+| Überlebender | +500 Score |
+| Startraum (während Escape-Countdown) | → `State.WIN` |
 
 ---
 
@@ -78,7 +74,6 @@ DYING ──animation done──→ [State: DEAD]
 | Feld | Wert |
 |---|---|
 | Sprite | Gefülltes weißes Quadrat 14×14 px |
-| Farbe | Weiß `#ffffff` |
 | HP | 2 |
 | Schussrate | alle 1.5 s |
 
@@ -94,7 +89,7 @@ any    ──hp = 0──→ dying (0.5 s Blinken, dann entfernt)
 ### Verhalten
 
 - **patrol:** Fliegt horizontal mit `±80 px/s`. Dreht um 20 px vor Raumgrenze.
-- **chase:** Fliegt direkt auf Spieler zu, `150 px/s`. Hält Mindestabstand `80 px`. Schießt alle 1.5 s.
+- **chase:** Fliegt direkt auf Spieler zu, `150 px/s`. Hält Mindestabstand `80 px`. Schießt alle 1.5 s (`300 px/s`-Projektil).
 - **dying:** Blinkt 0.5 s (14 Hz), dann aus Array entfernt. Partikel bei Treffer.
 - Y wird pro Frame auf den Bereich zwischen Decke und Boden geclampt.
 
@@ -102,8 +97,8 @@ any    ──hp = 0──→ dying (0.5 s Blinken, dann entfernt)
 
 | Mit | Effekt |
 |---|---|
-| Spieler-Projektil | −1 HP, Partikel |
-| Spieler (Körperkontakt) | −0.08 Energie (mit Unverwundbarkeits-Fenster) |
+| Spieler-Projektil | −1 HP, Partikel; bei `hp ≤ 0` +100 Score |
+| Spieler (Körperkontakt) | −0.08 Schild (mit Unverwundbarkeits-Fenster) |
 
 ---
 
@@ -113,109 +108,106 @@ any    ──hp = 0──→ dying (0.5 s Blinken, dann entfernt)
 
 | Feld | Wert |
 |---|---|
-| Sprite | Kugel r=4 px (gefüllt) + Rohr 25×5 px (Linie), weiß |
+| Sprite | Halbkreis-Körper r=9 px (gefüllt) + Lauf 13 px (Linie, lineWidth 5), weiß |
 | HP | 3 |
-| Schussrate | alle 2.0 s |
-| Montierung | Boden oder Decke (zufällig beim Spawn) |
-| Hitradius | 10 px |
+| Schussrate | alle 3.0 s |
+| Reichweite | 380 px |
+| Montierung | Boden oder Decke (zufällig beim Spawn), stationär |
 
 ### Zustandsmaschine
 
 ```
 idle     ──dist < 380px──→ tracking
 tracking ──dist > 380px──→ idle
-tracking ──fireCooldown ≤ 0 + Sichtlinie frei──→ schießt
+tracking ──fireCooldown ≤ 0 + Sichtlinie frei──→ feuert Rakete
 any      ──hp = 0──→ dying (0.5 s Blinken, dann entfernt)
 ```
 
 ### Verhalten
 
-- **idle:** Lauf zeigt senkrecht in den Hohlraum (Boden → −π/2, Decke → π/2).
-- **tracking:** Lauf dreht sich mit `2 rad/s` zum Spieler. Winkel auf Cave-Seite beschränkt (Boden: −π…0, Decke: 0…π).
-- **schießen:** Nur wenn `hasLineOfSight` true. Projektil in aktueller Laufrichtung, `300 px/s`.
-- Sichtlinienprüfung via Segment-Schnitt-Test gegen alle Decken-/Boden-Segmente und Hindernisseiten.
-- Position ist fest, kein `vx`/`vy`.
+- **idle:** Lauf zeigt senkrecht in den Hohlraum (Boden → `−π/2`, Decke → `π/2`).
+- **tracking:** Lauf dreht sich mit `2 rad/s` zum Spieler. Winkel auf Cave-Seite beschränkt (Boden: `−π…0`, Decke: `0…π`).
+- **feuert:** Nur wenn `hasLineOfSight` true. Spawnt eine homing **Missile** (siehe unten) aus der Laufspitze — kein direktes Projektil.
+- Position ist fest, kein `vx`/`vy`. Kein Körperkontakt-Schaden am Spieler.
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler-Projektil (r < 10 px) | −1 HP, Partikel |
-| Spieler (Körperkontakt) | −0.08 Energie (mit Unverwundbarkeits-Fenster) |
+| Spieler-Projektil (r < 10 px) | −1 HP, Partikel; bei `hp ≤ 0` +100 Score |
 
 ---
 
-## Agent: MissileLauncher (Raketenwerfer)
+## Agent: Mine
 
 ### Eigenschaften
 
 | Feld | Wert |
 |---|---|
-| Sprite | Kreis r=10 px (gefüllt), weiß; pulsiert im Alert-Zustand |
+| Sprite | pulsierender weißer Kreis, Radius 10 px |
 | HP | 3 |
-| Alert-Radius | 200 px |
-| Feuer-Radius | 150 px |
-| Cooldown | 10 s nach Abschuss |
+| Alert-Distanz | 150 px |
+| Trigger-Distanz | 80 px (sofortige Detonation, kein Cooldown) |
+| Explosionsradius | 100 px |
+| Max. Schaden | 0.5 Schild (linearer Distanz-Falloff) |
 
 ### Zustandsmaschine
 
 ```
-idle ──dist < 200px──→ alert (pulsiert)
-alert ──dist < 150px──→ feuert Rakete → cooldown (10 s)
-cooldown ──timer = 0──→ idle
-any ──hp = 0──→ dying
+idle  ──dist < 150px──→ alert (pulsiert, Alarm-Sound einmalig)
+alert ──dist ≥ 150px──→ idle
+alert ──dist < 80px──→ explodiert → dying
+any   ──hp = 0──→ dying (Explosion ohne vorherigen Alert nötig)
 ```
 
 ### Verhalten
 
-- Stationär, keine Bewegung.
-- **alert:** Radius oszilliert via `sin(pulseTimer * 8) * 3`.
-- **cooldown:** Innerer Ring (dunkelgrau) sichtbar.
-- Feuert genau eine Rakete pro Aktivierung aus der eigenen Position.
+- Stationär, keine Bewegung. Ersetzt den früheren „Raketenwerfer" — die Mine feuert selbst nichts ab, sondern detoniert per Kontaktzünder.
+- Explosion: 200 Partikel-Burst, Splash-Schaden mit Distanz-Falloff an den Spieler, danach `dying`-State (schnell entfernt).
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler-Projektil | −1 HP |
-| Spieler (Kollision) | kein direkter Schaden (Rakete übernimmt) |
+| Spieler-Projektil | −1 HP, Partikel; bei `hp ≤ 0` +100 Score (Mine wird entschärft, keine Explosion) |
+| Spieler (< 80 px) | Explosion, bis −0.5 Schild |
 
 ---
 
-## Agent: Missile (Heimsuchungsrakete)
+## Agent: Missile (Homing-Rakete, von Turrets abgefeuert)
 
 ### Eigenschaften
 
 | Feld | Wert |
 |---|---|
-| Sprite | Dreieck 10×6 px + Flammen-Trail (Partikel), Farbe Gelb-Orange |
-| HP | 1 (ein Treffer genügt) |
-| Score bei Abschuss | 75 |
-| Geschwindigkeit | 4 px/frame |
-| Kurskorrektur | max 3°/frame |
+| Sprite | Dreieck 10×8 px + Flammen-Trail (Partikel), weiß |
+| Geschwindigkeit | 120 px/s |
+| Kurskorrektur | max. `π rad/s` in Richtung Spieler |
+| Lebensdauer | max. 5 s |
 | Splash-Radius | 40 px |
+| Splash-Schaden | 0.2 Schild (normaler Treffer, kein Bypass) |
 
 ### Zustandsmaschine
 
 ```
-SPAWNED ──→ HOMING
-HOMING ──player hit or wall hit──→ EXPLODING
-HOMING ──player-projectile hit──→ EXPLODING
-EXPLODING ──animation done (0.4 s)──→ alive = false
+homing ──player hit, wall hit, oder Laser-Kontakt──→ exploding
+homing ──lifeTimer ≤ 0──→ exploding
+exploding ──animation done (0.4 s)──→ entfernt
 ```
 
 ### Verhalten
 
-- **HOMING:** Berechnet Winkel zum Spieler, korrigiert eigene Flugrichtung um max 3°/frame.
-- **EXPLODING:** Partikel-Explosion, Splash-Schaden (20 HP) in 40 px Radius.
-- Emittiert pro Frame 3 Trail-Partikel (gelb/orange, kurze Lebensdauer).
+- **homing:** Berechnet Winkel zum Spieler, korrigiert Flugrichtung um max. `π rad/s`.
+- **exploding:** Partikel-Explosion (20 Partikel), Splash-Schaden in 40 px Radius, falls Spieler getroffen.
+- Emittiert 3 Trail-Partikel alle `1/30 s`.
+- **Kann nicht durch Spieler-Projektile zerstört werden** — Raketen sind kein Mitglied von `room.enemies` und werden von der Projektil-Kollisionsprüfung nicht erfasst. Einzige Abwehr: Ausweichen, ein aktiver Laserstrahl, Lebensdauer-Ablauf, oder das Zerstören des abfeuernden Turrets (verhindert Nachschub).
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler (Kollision) | Explosion, -20 HP Spieler (Splash) |
-| Spieler-Projektil | Explosion (kein Spieler-Schaden wenn nicht in Splash) |
+| Spieler (Kollision) | Explosion, bis −0.2 Schild (Splash) |
+| Laser-Strahl (aktiv) | Explosion, kein Schaden am Spieler |
 | Wand | Explosion |
 
 ---
@@ -228,8 +220,8 @@ EXPLODING ──animation done (0.4 s)──→ alive = false
 |---|---|
 | Sprite | Linie zwischen zwei Emitter-Rechtecken (8×8 px), Glow, Farbe Weiß `#ffffff` |
 | Emitter-HP | 4 (jeder Emitter einzeln zerstörbar) |
-| Takt | 0.5–2 s an / 1–5 s aus (zufällig, gestaffelt) |
-| Schaden | 0.01/frame direkt (kein Unverwundbarkeits-Fenster) |
+| Takt | 0.5–2 s an / 1–5 s aus (zufällig, pro Barriere unabhängig) |
+| Schaden | 2.0 Energie/s direkt (kein Schild, keine Unverwundbarkeit) |
 
 ### Zustandsmaschine
 
@@ -241,7 +233,7 @@ any emitter ──hp=0──→ disabled (Strahl permanent aus)
 
 ### Verhalten
 
-- Emitter A an Decke, Emitter B am Boden — auch diagonal (bis ±250 px versetzt).
+- Emitter A an Decke, Emitter B am Boden — auch diagonal versetzt (bis ±250 px).
 - Strahl ist eine Linie mit `shadowBlur = 12`, weiß.
 - Schaden pro Frame solange Spieler-Kreis den Strahl schneidet und Zustand `on`.
 - Zerstört Spieler-Projektile, Gegner-Projektile und Raketen beim Kontakt mit dem Strahl.
@@ -252,7 +244,7 @@ any emitter ──hp=0──→ disabled (Strahl permanent aus)
 
 | Mit | Effekt |
 |---|---|
-| Spieler (Kontakt, on) | −0.01 Schild/frame (kein Unverwundbarkeits-Fenster) |
+| Spieler (Kontakt, on) | −2.0 Energie/s, direkt |
 | Spieler-Projektil (Strahl, on) | Projektil zerstört |
 | Spieler-Projektil (Emitter) | −1 HP Emitter |
 | Gegner-Projektil (Strahl, on) | Projektil zerstört |
@@ -266,32 +258,32 @@ any emitter ──hp=0──→ disabled (Strahl permanent aus)
 
 | Feld | Wert |
 |---|---|
-| Sprite | 3 konzentrische Hexagone (rotierend), Glow pulsierend, Farbe Blau-Weiß |
-| Größe | ca. 80×80 px |
-| HP | 25 |
+| Sprite | 3 gekippte elliptische Orbitringe mit rotierenden „Elektronen" (Atom-Symbol), dunkelroter Kern mit Glanzlicht |
+| Kernradius | 22 px |
+| HP | 25 (ein Spieler-Projektiltreffer = −1 HP) |
 | Score bei Zerstörung | 5000 |
 
 ### Zustandsmaschine
 
 ```
-INTACT ──hp < 50%──→ DAMAGED
-DAMAGED ──hp = 0──→ EXPLODING
-EXPLODING ──sequence done──→ [State: ESCAPE aktiviert]
+intact ──hp = 0──→ exploding
+exploding ──explodeTimer ≤ 0 (2.5s)──→ „destroyed" (Escape-Countdown startet)
 ```
+
+Es gibt keine separate „DAMAGED"-Zwischenstufe mit eigenem Aussehen — der Reaktor bleibt visuell bis `hp = 0` unverändert (nur ein kurzer Treffer-Flash pro Hit).
 
 ### Verhalten
 
-- **INTACT:** Hexagone rotieren langsam, Glow pulsiert (`shadowBlur` 8–20).
-- **DAMAGED:** Rotation schneller, Farbe wechselt zu Orange, gelegentliche Funken-Partikel.
-- **EXPLODING:** Sequenz über 2 s: mehrere Explosionswellen, Bildschirm-Flash, Alarm.
-- Gibt keine eigenen Projektile ab. Ist von Turrets bewacht.
+- **intact:** Orbitringe rotieren, Elektronen kreisen; bei Körperkontakt zieht der Reaktor `2.0 Energie/s` direkt vom Spieler ab.
+- **exploding:** Sequenz über 2.5 s: wachsende weiße Blitzkugel, 250-Partikel-Burst, Screen-Shake (`20`, klingt ab).
+- Gibt selbst keine Projektile ab. Wird typischerweise von 4–6 Gegnern bewacht (siehe Spawn-Logik im Reaktorraum).
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler-Projektil | -1 HP |
-| Spieler (Kollision) | -10 HP Spieler |
+| Spieler-Projektil | −1 HP, Screen-Shake `6`, Treffer-Flash |
+| Spieler (Körperkontakt) | −2.0 Energie/s, direkt |
 
 ---
 
@@ -301,8 +293,8 @@ EXPLODING ──sequence done──→ [State: ESCAPE aktiviert]
 
 | Feld | Wert |
 |---|---|
-| Sprite | Kugel r=6 px, Halbmond-Schatten unten-rechts, Glanzpunkt oben-links |
-| Kollisionsradius | 12 px |
+| Sprite | Kugel r=6 px, Schattenfarbe als Basis, hellerer Kreis oben-links geclippt |
+| Kollisionsdistanz | 22 px |
 | HP | — (kein Schaden möglich) |
 
 ### Typen
@@ -315,57 +307,83 @@ EXPLODING ──sequence done──→ [State: ESCAPE aktiviert]
 
 ### Verhalten
 
-- Statisch, keine Bewegung. Spawn: 0–2 pro Raum, nicht im letzten Raum.
-- Bei Kollision mit Spieler: Ressource +0.25 (max 1.0), Impact-Partikel, entfernt.
+- Statisch, keine Bewegung. Spawn: 2–3 pro Raum (auch im Reaktorraum generiert, dort aber direkt vom Spiel geleert). Erste Kugel eines Raums ist immer `energy`, Rest zufällig.
+- Bei Kollision mit Spieler: Ressource `+0.25` (max. 1.0), Impact-Partikel, entfernt.
 
 ---
 
-## Agent: Projectile (Projektil)
+## Agent: Survivor (Überlebender)
 
-Wird von Spieler, Feind-Hubschrauber und Wandgeschütz verwendet.
+### Eigenschaften
+
+| Feld | Wert |
+|---|---|
+| Sprite | Invertiertes Dreieck (Körper) + Kreis (Kopf) + winkender Arm (Rechteck), weiß |
+| Kollisionsdistanz | 35 px |
+| Score bei Rettung | 500 |
+
+### Zustandsmaschine
+
+```
+waiting ──dist < 35px──→ rescued (entfernt, Score +500)
+```
+
+### Verhalten
+
+- Statisch, steht auf dem Boden des Raums. Arm winkt per Sinus-Animation.
+- Platziert zu Levelstart: Anzahl = aktuelle Levelnummer, zufällig über alle Nicht-Reaktor-Räume verteilt, außerhalb der Ausgangs-Freihaltezonen.
+
+### Interaktionen
+
+| Mit | Effekt |
+|---|---|
+| Spieler (< 35 px) | +500 Score, Impact-Partikel, entfernt |
+
+---
+
+## Agent: Projectile (Spieler-Projektil)
+
+Wird ausschließlich vom Spieler verwendet (Gegner-Projektile sind ein separates, einfacheres Array in `enemies.js`).
 
 ### Eigenschaften
 
 | Feld | Wert |
 |---|---|
 | Sprite | Linie 8 px lang, `lineWidth 2`, weiß, `lineCap round` |
-| Geschwindigkeit | Spieler: `600 px/s` / Feind: (ausstehend) |
+| Geschwindigkeit | 600 px/s |
 | Reichweite | kein Limit — verschwindet bei Wand-/Hinderniskollision |
-| Schaden | gegen Feinde: ausstehend |
 
 ### Verhalten
 
-- Fliegt in konstanter Richtung in Blickrichtung des Schiffs.
-- Kollision: Decke/Boden via `interpolateWall`, Hindernisse via `pointInTriangle`.
+- Fliegt in konstanter Richtung (Blickrichtung des Schiffs bei Abschuss).
+- Kollision: Decke/Boden via `interpolateWall`, Hindernisse via `pointInTriangle`, Gegner via Kreis-Distanz (Radius je nach `kind`: Turret 10 px, Mine 10 px, Helikopter 7 px), Reaktor-Kern via Kreis-Distanz, Laser-Emitter via Kreis-Distanz.
 - Bei Treffer: 12 Partikel in Zufallsrichtungen, Fade-out über 0.42 s.
-- Mündungsfeuer-Partikel: ausstehend.
+- **Trifft keine Raketen** (siehe Agent: Missile).
 
 ---
 
 ## Spawn-Logik
 
-Beim Generieren eines Raums wird folgendes platziert:
+Beim Generieren eines Raums wird folgendes platziert (Reihenfolge in `game.js: initLevel`):
 
-1. **Gegner:** Anzahl und Typ laut Schwierigkeitsgrad und Raum-Typ. Spawn-Positionen: zufällig im freien Luftraum, mindestens `150 px` vom Eingang entfernt.
-2. **Laser-Barrieren:** 0–2 pro Raum, horizontal oder vertikal, nie im Tunnel selbst.
-3. **Extras:** 0–2 pro Raum (abhängig von Schwierigkeitsgrad), zufällige Position im freien Bereich.
-4. **Reaktor:** Nur im letzten Raum, zentriert, mit 2–4 Turrets als Bewachung.
+1. **Gegner:** siehe SPEC.md „Gegner → Spawn-Logik". Keine Gegner in Schatzkammer-Räumen; 4–6 im Reaktorraum.
+2. **Laser-Barrieren:** 0–2 pro Raum, nie in Schatzkammer/Reaktor, nie in einer Ausgangs-Freihaltezone.
+3. **Extras:** 2–3 pro Raum, außerhalb der Ausgangs-Freihaltezonen.
+4. **Reaktor:** nur im letzten Raum des Hauptpfads, zentriert. Pickups des Reaktorraums werden nach der Generierung geleert.
+5. **Überlebende:** über alle Nicht-Reaktor-Räume verteilt, Anzahl = Levelnummer (separater Spawn-Pass nach der Raumgenerierung, eigener Seed-Offset).
 
 ---
 
-## Kollisions-Prioritäten
+## Kollisions-Prüfungen pro Frame
 
-Reihenfolge der Kollisionsprüfungen pro Frame:
+Tatsächliche Reihenfolge in `updatePlaying` (`game.js`):
 
-1. Spieler ↔ Wand
-2. Spieler ↔ Feind-Projektile
-3. Spieler ↔ Laser (wenn ON)
-4. Spieler ↔ Feinde (Körperkontakt)
-5. Spieler ↔ Reaktor
-6. Spieler ↔ Pickups
-7. Spieler-Projektile ↔ Feinde
-8. Spieler-Projektile ↔ Reaktor
-9. Spieler-Projektile ↔ Laser-Emitter
-10. Spieler-Projektile ↔ Wand
-11. Feind-Projektile ↔ Wand
-12. Raketen ↔ Wand / Spieler
+1. Spieler ↔ Wand (`resolveCollisions`)
+2. Gegner-Update (inkl. Spieler ↔ Feind-Hubschrauber Körperkontakt, Turret-/Minen-Zustandslogik)
+3. Spieler-Projektile ↔ Wand / Hindernisse / Gegner
+4. Gegner-Projektile ↔ Wand / Spieler
+5. Raketen ↔ Wand / Spieler / Lebensdauer
+6. Laser: Spieler-Projektile ↔ Emitter, Strahl ↔ Spieler / Gegner-Projektile / Raketen
+7. Spieler ↔ Pickups
+8. Spieler ↔ Überlebende
+9. Reaktor: Spieler-Körperkontakt, Spieler-Projektile ↔ Kern
