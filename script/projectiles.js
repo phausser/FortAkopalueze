@@ -1,4 +1,4 @@
-import { SHIP_RADIUS, PROJECTILE_SPEED, PROJECTILE_LENGTH, FIRE_COOLDOWN, MINE_RADIUS, ENEMY_HALF, ENEMY_DMG, SCORE_ENEMY } from './constants.js';
+import { SHIP_RADIUS, PROJECTILE_SPEED, PROJECTILE_LENGTH, FIRE_COOLDOWN, AMMO_PER_SHOT, MINE_RADIUS, ENEMY_HALF, ENEMY_DMG, SCORE_ENEMY } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { resources } from './resources.js';
 import { playShoot, playEnemyDeath } from './sound.js';
@@ -20,7 +20,7 @@ function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
 export function shoot() {
   if (ship.fireCooldown > 0 || resources.ammo <= 0) return;
   playShoot();
-  resources.ammo -= 1 / 80;
+  resources.ammo -= AMMO_PER_SHOT;
   projectiles.push({
     x: ship.x + Math.cos(ship.angle) * 16,
     y: ship.y + Math.sin(ship.angle) * 16,

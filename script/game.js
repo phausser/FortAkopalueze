@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State, BEAM_IN_DURATION, ESCAPE_TIME_PER_ROOM, MINIMAP_CELL, MINIMAP_GAP, MINIMAP_MARGIN } from './constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State, BEAM_IN_DURATION, ESCAPE_TIME_PER_ROOM, MINIMAP_CELL, MINIMAP_GAP, MINIMAP_MARGIN, SCORE_SURVIVOR, SCORE_TIME_BONUS_PER_SEC, TIME_BONUS_TICK_INTERVAL, SURVIVOR_REVEAL_INTERVAL } from './constants.js';
 import { input } from './input.js';
 import { resources, resetResources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
@@ -10,9 +10,9 @@ import { missiles, updateMissiles, drawMissiles } from './missiles.js';
 import { enemyProjectiles, updateEnemies, updateEnemyProjectiles, drawEnemies, drawEnemyProjectiles } from './enemies.js';
 import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projectiles.js';
 import { spawnPickupsForRoom, updatePickups, drawPickups } from './pickups.js';
-import { spawnSurvivorsForLevel, updateSurvivors, drawSurvivors } from './survivors.js';
+import { spawnSurvivorsForLevel, updateSurvivors, drawSurvivors, drawSurvivorIcon, survivorState, resetRescuedCount } from './survivors.js';
 import { spawnReactor, updateReactor, drawReactor, isReactorDestroyed, screenShake } from './reactor.js';
-import { score, resetScore } from './score.js';
+import { score, resetScore, addScore } from './score.js';
 import { startThrust, stopThrust, stopAllLoops, playDeath, playGameOver, playWin, startMusic } from './sound.js';
 
 // ─── Spielstand ───────────────────────────────────────────────────────────────
@@ -36,6 +36,7 @@ const game = {
 let thrustTrailTimer = 0;
 let beamInTimer = 0;
 let escapeTimer = -1;
+let winBonus = null;
 
 // ─── Level-Initialisierung ────────────────────────────────────────────────────
 
@@ -64,7 +65,47 @@ function initLevel(level) {
   resetShip(game.rooms[0]);
   resetResources();
   escapeTimer = -1;
+  winBonus = null;
+  resetRescuedCount();
   startMusic();
+}
+
+// ─── Win-Bonus-Tally (Zeit + gerettete Überlebende) ──────────────────────────
+
+function startWinBonus() {
+  const seconds = Math.ceil(Math.max(0, escapeTimer));
+  const rescued = survivorState.rescuedCount;
+  winBonus = {
+    secondsTotal: seconds,
+    secondsShown: 0,
+    secondsTimer: 0,
+    rescuedTotal: rescued,
+    rescuedShown: 0,
+    rescuedTimer: 0,
+    phase: seconds > 0 ? 'seconds' : (rescued > 0 ? 'survivors' : 'done'),
+  };
+}
+
+function updateWinBonus(dt) {
+  if (winBonus.phase === 'seconds') {
+    winBonus.secondsTimer += dt;
+    while (winBonus.secondsTimer >= TIME_BONUS_TICK_INTERVAL && winBonus.secondsShown < winBonus.secondsTotal) {
+      winBonus.secondsTimer -= TIME_BONUS_TICK_INTERVAL;
+      winBonus.secondsShown++;
+      addScore(SCORE_TIME_BONUS_PER_SEC);
+    }
+    if (winBonus.secondsShown >= winBonus.secondsTotal) {
+      winBonus.phase = winBonus.rescuedTotal > 0 ? 'survivors' : 'done';
+    }
+  } else if (winBonus.phase === 'survivors') {
+    winBonus.rescuedTimer += dt;
+    while (winBonus.rescuedTimer >= SURVIVOR_REVEAL_INTERVAL && winBonus.rescuedShown < winBonus.rescuedTotal) {
+      winBonus.rescuedTimer -= SURVIVOR_REVEAL_INTERVAL;
+      winBonus.rescuedShown++;
+      addScore(SCORE_SURVIVOR);
+    }
+    if (winBonus.rescuedShown >= winBonus.rescuedTotal) winBonus.phase = 'done';
+  }
 }
 
 function computeMinimapLayout(rooms) {
@@ -236,7 +277,7 @@ function updatePlaying(dt) {
     escapeTimer -= dt;
     if (escapeTimer <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
     if (game.currentRoomId === 0) {
-      stopAllLoops(); playWin(); game.setState(State.WIN); return;
+      stopAllLoops(); playWin(); startWinBonus(); game.setState(State.WIN); return;
     }
   }
 
@@ -249,7 +290,11 @@ function updateDead() {
 
 function updateEscape() { }
 
-function updateWin() {
+function updateWin(dt) {
+  if (winBonus && winBonus.phase !== 'done') {
+    updateWinBonus(dt);
+    return;
+  }
   if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
     game.level++;
     initLevel(game.level);
@@ -480,12 +525,50 @@ function renderDead(ctx) {
 function renderWin(ctx) {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px "Michroma", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Reaktor zerstört', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
-  ctx.font = '18px "Michroma", sans-serif';
-  ctx.fillText(`Mit ENTER oder LEERTASTE zum Level ${game.level + 1}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 40px "Michroma", sans-serif';
+  ctx.fillText('Reaktor zerstört', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 170);
+
+  ctx.font = 'bold 56px "Michroma", sans-serif';
+  ctx.fillText(String(score.value).padStart(6, '0'), CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 100);
+
+  if (winBonus) {
+    const BONUS_GRAY = '#aaaaaa';
+
+    ctx.font = '16px "Michroma", sans-serif';
+    ctx.fillStyle = BONUS_GRAY;
+    ctx.textAlign = 'center';
+    ctx.fillText(`${SCORE_TIME_BONUS_PER_SEC} × ${winBonus.secondsShown}s`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 55);
+
+    if (winBonus.rescuedTotal > 0) {
+      const y = CANVAS_HEIGHT / 2 - 15;
+      const label = `${SCORE_SURVIVOR} × `;
+      const iconSpacing = 29;
+      const textW = ctx.measureText(label).width;
+      const totalW = textW + winBonus.rescuedTotal * iconSpacing;
+      const startX = CANVAS_WIDTH / 2 - totalW / 2;
+
+      ctx.fillStyle = BONUS_GRAY;
+      ctx.textAlign = 'left';
+      ctx.fillText(label, startX, y);
+
+      const t = performance.now() / 1000;
+      const iconX0 = startX + textW + iconSpacing / 2;
+      ctx.fillStyle = BONUS_GRAY;
+      for (let i = 0; i < winBonus.rescuedShown; i++) {
+        drawSurvivorIcon(ctx, iconX0 + i * iconSpacing, y + 6, t, 1.1);
+      }
+      ctx.textAlign = 'center';
+    }
+  }
+
+  if (!winBonus || winBonus.phase === 'done') {
+    ctx.font = '18px "Michroma", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`Mit ENTER oder LEERTASTE zum Level ${game.level + 1}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 130);
+  }
 }
 
 const stateRenderers = {

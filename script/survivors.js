@@ -1,12 +1,18 @@
 import { interpolateWall, lerp, makePRNG, getExitClearZones, overlapsExitZonesX } from './level.js';
 import { ship } from './ship.js';
-import { addScore } from './score.js';
 import { spawnImpactParticles } from './particles.js';
 
 const COLLECT_DIST = 35;
 const HEAD_R = 5;
 const BODY_W = 14;
 const BODY_H = Math.round(BODY_W * Math.sqrt(3) / 2);
+
+// Score für gerettete Überlebende wird nicht sofort vergeben, sondern erst als
+// animierte Bonus-Tally auf dem Win-Screen (siehe game.js) — hier wird nur
+// gezählt, wie viele in diesem Level gerettet wurden.
+export const survivorState = { rescuedCount: 0 };
+
+export function resetRescuedCount() { survivorState.rescuedCount = 0; }
 
 export function spawnSurvivorsForLevel(rooms, seed, count) {
   for (const room of rooms) room.survivors = [];
@@ -36,11 +42,39 @@ export function updateSurvivors(room) {
     const dx = ship.x - s.x;
     const dy = ship.y - s.floorY;
     if (dx * dx + dy * dy < COLLECT_DIST * COLLECT_DIST) {
-      addScore(500);
+      survivorState.rescuedCount++;
       spawnImpactParticles(s.x, s.floorY);
       room.survivors.splice(i, 1);
     }
   }
+}
+
+// Wiederverwendbares Sprite: Körper (invertiertes Dreieck) + Kopf (Kreis) +
+// winkender Arm. `floorY` ist die Standfläche, `scale` erlaubt eine größere
+// Darstellung außerhalb des Spiels (z.B. auf dem Win-Screen).
+export function drawSurvivorIcon(ctx, x, floorY, t, scale = 1) {
+  const tipY = floorY - 2 * scale;
+  const bodyTopY = tipY - BODY_H * scale;
+  const headCY = bodyTopY - HEAD_R * scale - 1 * scale;
+
+  ctx.beginPath();
+  ctx.moveTo(x - BODY_W * scale / 2, bodyTopY);
+  ctx.lineTo(x + BODY_W * scale / 2, bodyTopY);
+  ctx.lineTo(x, tipY);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, headCY, HEAD_R * scale, 0, Math.PI * 2);
+  ctx.fill();
+
+  const shoulderX = x - BODY_W * scale / 2;
+  const shoulderY = bodyTopY;
+  const armLen = 9 * scale;
+  const angle = -Math.PI * 2 / 3 + Math.sin(t * 8 + x) * (Math.PI / 6);
+  const handX = shoulderX + Math.cos(angle) * armLen;
+  const handY = shoulderY + Math.sin(angle) * armLen;
+  ctx.fillRect(handX - 1.5 * scale, handY - 1.5 * scale, 3 * scale, 3 * scale);
 }
 
 export function drawSurvivors(ctx, room) {
@@ -48,31 +82,6 @@ export function drawSurvivors(ctx, room) {
   const t = performance.now() / 1000;
   ctx.fillStyle = '#ffffff';
   for (const s of room.survivors) {
-    const { x, floorY } = s;
-    const tipY    = floorY - 2;
-    const bodyTopY = tipY - BODY_H;
-    const headCY  = bodyTopY - HEAD_R - 1;
-
-    // Body: inverted triangle
-    ctx.beginPath();
-    ctx.moveTo(x - BODY_W / 2, bodyTopY);
-    ctx.lineTo(x + BODY_W / 2, bodyTopY);
-    ctx.lineTo(x, tipY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Head: circle
-    ctx.beginPath();
-    ctx.arc(x, headCY, HEAD_R, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Waving hand: 60° arc around left shoulder; top end ~3px from head
-    const shoulderX = x - BODY_W / 2;
-    const shoulderY = bodyTopY;
-    const armLen = 9;
-    const angle = -Math.PI * 2 / 3 + Math.sin(t * 8 + s.x) * (Math.PI / 6);
-    const handX = shoulderX + Math.cos(angle) * armLen;
-    const handY = shoulderY + Math.sin(angle) * armLen;
-    ctx.fillRect(handX - 1, handY - 1, 3, 3);
+    drawSurvivorIcon(ctx, s.x, s.floorY, t);
   }
 }

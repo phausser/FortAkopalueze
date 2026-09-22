@@ -75,7 +75,7 @@ Intern als Wert `0.0–1.0` gespeichert. HUD-Balken 50 × 5 px.
 |---|---|---|---|---|
 | **Energie** | Blau | `ENERGY_DRAIN = 0.0175/s` beim Thrusten (↑/↓); zusätzlich direkter Abzug durch Laser/Reaktor-Kontakt (s.u.) | Energie-Kugel | Bei 0 sofort |
 | **Schild** | Grün | Wandkontakt `−0.05`, Feind-Treffer `−0.08`, Raketen-Splash `−0.2`, Minen-Splash bis `−0.5` (Distanz-Falloff) | Schild-Kugel | Bei 0: nächster (nicht-direkter) Treffer setzt Energie sofort auf 0 |
-| **Munition** | Gelb | `1/80` pro Schuss | Munitions-Kugel, **und** automatische Regeneration `+1/120 pro Sekunde` (voll in 2 min ohne Schießen) | Kein Schießen mehr möglich |
+| **Munition** | Gelb | `1/160` pro Schuss (160 Schüsse = voll) | Munitions-Kugel, **und** automatische Regeneration `+1/120 pro Sekunde` (voll in 2 min ohne Schießen) | Kein Schießen mehr möglich |
 
 Laser-Kontakt und Reaktor-Körperkontakt ziehen `2.0 Energie/s` **direkt** ab (kein Schild, keine Unverwundbarkeit).
 
@@ -185,7 +185,7 @@ Alle Gegner haben `hp`, ein geometrisches Sprite, eine Kollisionsbox und hinterl
 ## Überlebende (Rettung)
 
 - Pro Level werden so viele Überlebende platziert wie die Levelnummer (Level 1 = 1, Level 2 = 2, …), verteilt über alle Nicht-Reaktor-Räume.
-- Stehen fest auf dem Boden, winken (animierter Arm). Einsammeln durch Anflug (`35 px` Radius) gibt `+500` Punkte und eine Impact-Partikel-Explosion.
+- Stehen fest auf dem Boden, winken (animierter Arm). Einsammeln durch Anflug (`35 px` Radius) zählt sie als gerettet (Impact-Partikel, entfernt) — die `+500` Punkte pro Person werden **nicht sofort** gutgeschrieben, sondern erst als Bonus-Tally auf dem Win-Screen (siehe „Win-Bonus-Tally").
 - Kein Zeitlimit, kein Straf-Mechanismus beim Ignorieren.
 
 ---
@@ -211,6 +211,18 @@ Alle Gegner haben `hp`, ein geometrisches Sprite, eine Kollisionsbox und hinterl
 - Ziel: Startraum (Raum-ID 0) erreichen, bevor der Countdown abläuft.
 - Bei `t = 0`: `State.DEAD` („GAME OVER"-Screen, kein spezifischer Todesgrund-Text).
 - Bei rechtzeitigem Erreichen des Startraums: `State.WIN`.
+
+---
+
+## Win-Bonus-Tally
+
+Beim Erreichen von `State.WIN` wird der Score in zwei animierten Phasen um Zeit- und Rettungsbonus ergänzt, bevor der Spieler ins nächste Level darf. Beide Zeilen werden einheitlich hellgrau (`#aaaaaa`) dargestellt, unabhängig davon welche Phase gerade läuft.
+
+1. **Zeitbonus** (Format `50 × {Sekunden}s`): die im Moment des Sieges verbleibenden Escape-Sekunden (aufgerundet) zählen **hoch** — beginnend bei 0 bis zum vollen Wert, `5 Ticks/s` (alle `0.2 s` ein Tick), pro Tick `+50` Punkte direkt auf den Score. Am Ende der Animation steht die tatsächliche Sekundenzahl da.
+2. **Rettungsbonus** (Format `500 × [Icons]`): anschließend erscheint direkt hinter dem `500 ×`-Label für jeden in diesem Level geretteten Überlebenden ein Icon (gleiches Sprite wie im Spiel, aber im selben Hellgrau wie der Text statt Weiß), nacheinander im Abstand von `1/3 s`, jeweils mit `+500` Punkten auf den Score.
+3. Erst wenn beide Phasen durchlaufen sind (`phase === 'done'`), erscheint der Hinweis „Mit ENTER oder LEERTASTE zum Level X" — vorher ist der Levelwechsel blockiert.
+
+Ist eine Phase von vornherein leer (0 Sekunden übrig bzw. 0 Gerettete), wird sie ohne Animation übersprungen.
 
 ---
 
@@ -273,11 +285,12 @@ Ein Alarm-Sirenensound und ein Countdown-Piep für die Escape-Phase sind **nicht
 
 Score wird als 6-stellige Zahl oben rechts im HUD angezeigt (`000000`), läuft über alle Level weiter.
 
-| Ereignis | Punkte |
-|---|---|
-| Feind zerstört (Helikopter/Turret/Mine) | 100 |
-| Überlebender gerettet | 500 |
-| Reaktor zerstört | 5000 |
+| Ereignis | Punkte | Zeitpunkt der Gutschrift |
+|---|---|---|
+| Feind zerstört (Helikopter/Turret/Mine) | 100 | sofort |
+| Reaktor zerstört | 5000 | sofort |
+| Escape-Sekunde übrig | 50 | animiert auf dem Win-Screen (siehe „Win-Bonus-Tally") |
+| Überlebender gerettet | 500 | animiert auf dem Win-Screen (siehe „Win-Bonus-Tally") |
 
 ---
 

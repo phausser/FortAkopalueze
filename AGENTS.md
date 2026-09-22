@@ -31,7 +31,7 @@ Update/Draw laufen über zentrale Dispatcher in `enemies.js` (`updateEnemies`/`d
 | Sprite | Delta-Dreieck (Outline), Spitze vorne, 2 Punkte hinten — weiß `#ffffff`, `lineWidth 6` |
 | Energie | 0.0–1.0; sinkt um `0.0175/s` beim Thrusten |
 | Schild | 0.0–1.0; sinkt bei Treffern (Projektile, Kollision, Raketen-/Minen-Splash); bei 0 nächster (nicht-direkter) Treffer = Tod |
-| Munition | 0.0–1.0 (80 Schüsse = voll); regeneriert automatisch mit `+1/120 pro Sekunde`; kein Schuss wenn leer |
+| Munition | 0.0–1.0 (160 Schüsse = voll); regeneriert automatisch mit `+1/120 pro Sekunde`; kein Schuss wenn leer |
 | Kollisionsradius | 12 px (Kreis) |
 
 ### Zustandsmaschine
@@ -45,7 +45,7 @@ Es gibt kein separates IDLE/DYING-Substate im Code — der Spieler wird durch In
 ### Verhalten
 
 - **Bewegung:** `←`/`→` rotiert das Schiff (`3.0 rad/s`), `↑`/`↓` addiert Schub (`250 px/s²`) in/gegen Blickrichtung. `Shift`+`←`/`→` gleitet senkrecht zur Blickrichtung (Strafe, `180 px/s`, keine Rotation). Geschwindigkeit wird dt-basiert gedämpft (`SHIP_DAMPING = 0.99`). Keine Gravitation.
-- **Schießen:** `Space` feuert Projektil aus der Schiffspitze in Blickrichtung. Feuerrate 5/s (`FIRE_COOLDOWN = 0.2 s`). Kostet `1/80` Munition.
+- **Schießen:** `Space` feuert Projektil aus der Schiffspitze in Blickrichtung. Feuerrate 5/s (`FIRE_COOLDOWN = 0.2 s`). Kostet `1/160` Munition.
 - **Kollisionsreaktion:** Segment-normale-basierter Push-out + Velocity-Reflexion (`RESTITUTION = 0.25`). Schild `−0.05` pro Wandkontakt, `0.5 s` Unverwundbarkeit (Schiff blinkt).
 - **Schub-Trail:** Partikel-Effekt aus dem Heck, solange `↑` gehalten wird.
 - **Beam-in:** beim Levelstart (Übergang `LEVEL_INTRO → PLAYING`) 1.2 s Einblende-Animation mit Teleport-Partikeln, Schiff fadet von unsichtbar zu sichtbar ein.
@@ -62,7 +62,7 @@ Es gibt kein separates IDLE/DYING-Substate im Code — der Spieler wird durch In
 | Laser (im Strahl) | −2.0 Energie/s, direkt (kein Schild, keine Unverwundbarkeit) |
 | Reaktor (Körperkontakt) | −2.0 Energie/s, direkt (kein Schild, keine Unverwundbarkeit) |
 | Extra/Power-up | Ressource +0.25 |
-| Überlebender | +500 Score |
+| Überlebender | zählt als gerettet (`+500` Score erst im Win-Bonus-Tally) |
 | Startraum (während Escape-Countdown) | → `State.WIN` |
 
 ---
@@ -320,24 +320,25 @@ Es gibt keine separate „DAMAGED"-Zwischenstufe mit eigenem Aussehen — der Re
 |---|---|
 | Sprite | Invertiertes Dreieck (Körper) + Kreis (Kopf) + winkender Arm (Rechteck), weiß |
 | Kollisionsdistanz | 35 px |
-| Score bei Rettung | 500 |
+| Score bei Rettung | 500 (gutgeschrieben erst auf dem Win-Screen, siehe unten) |
 
 ### Zustandsmaschine
 
 ```
-waiting ──dist < 35px──→ rescued (entfernt, Score +500)
+waiting ──dist < 35px──→ rescued (entfernt, zählt in survivorState.rescuedCount)
 ```
 
 ### Verhalten
 
 - Statisch, steht auf dem Boden des Raums. Arm winkt per Sinus-Animation.
 - Platziert zu Levelstart: Anzahl = aktuelle Levelnummer, zufällig über alle Nicht-Reaktor-Räume verteilt, außerhalb der Ausgangs-Freihaltezonen.
+- **Score-Vergabe ist entkoppelt:** `updateSurvivors` (in `survivors.js`) inkrementiert nur `survivorState.rescuedCount` — kein `addScore`-Aufruf beim Einsammeln. Die eigentlichen `+500` pro Person werden erst beim Erreichen von `State.WIN` als animierte Bonus-Tally vergeben (siehe SPEC.md „Win-Bonus-Tally", Logik in `game.js: updateWinBonus`).
 
 ### Interaktionen
 
 | Mit | Effekt |
 |---|---|
-| Spieler (< 35 px) | +500 Score, Impact-Partikel, entfernt |
+| Spieler (< 35 px) | Impact-Partikel, entfernt, `rescuedCount++` (Score-Gutschrift folgt auf dem Win-Screen) |
 
 ---
 

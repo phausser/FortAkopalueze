@@ -14,6 +14,7 @@ export const INVINCIBLE_TIME = 0.5;
 export const PROJECTILE_SPEED = 600;
 export const PROJECTILE_LENGTH = 8;
 export const FIRE_COOLDOWN = 0.2;
+export const AMMO_PER_SHOT = 1 / 160;
 export const PARTICLE_SPEED = 120;
 export const PARTICLE_LIFETIME = 0.42;
 export const PARTICLE_COUNT = 12;
@@ -80,6 +81,10 @@ export const ESCAPE_TIME_PER_ROOM = 5; // Sekunden pro entdecktem Raum
 
 export const SCORE_ENEMY = 100;
 export const SCORE_REACTOR = 5000;
+export const SCORE_SURVIVOR = 500;
+export const SCORE_TIME_BONUS_PER_SEC = 50;
+export const TIME_BONUS_TICK_INTERVAL = 0.2;    // Sekunden-Countdown-Tally: 5 Ticks/s
+export const SURVIVOR_REVEAL_INTERVAL = 1 / 3;  // Abstand zwischen Überlebenden-Icons
 
 export const PICKUP_RADIUS = 6;
 export const PICKUP_COLLECT_DIST = 22;
