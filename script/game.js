@@ -548,9 +548,15 @@ function renderWin(ctx) {
       const y = CANVAS_HEIGHT / 2 - 15;
       const label = `${SCORE_SURVIVOR} × `;
       const iconSpacing = 29;
-      const textW = ctx.measureText(label).width;
+      const iconScale = 0.8;
+      const ICON_HEIGHT_UNIT = 23; // Kopf+Körper+Fuß bei scale 1, siehe drawSurvivorIcon
+      const metrics = ctx.measureText(label);
+      const textW = metrics.width;
       const totalW = textW + winBonus.rescuedTotal * iconSpacing;
       const startX = CANVAS_WIDTH / 2 - totalW / 2;
+      // Icon vertikal auf die optische Mitte des Textes zentrieren.
+      const textCenterY = y - (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
+      const iconFloorY = textCenterY + (ICON_HEIGHT_UNIT * iconScale) / 2;
 
       ctx.fillStyle = BONUS_GRAY;
       ctx.textAlign = 'left';
@@ -560,7 +566,7 @@ function renderWin(ctx) {
       const iconX0 = startX + textW + iconSpacing / 2;
       ctx.fillStyle = BONUS_GRAY;
       for (let i = 0; i < winBonus.rescuedShown; i++) {
-        drawSurvivorIcon(ctx, iconX0 + i * iconSpacing, y + 6, t, 1.1);
+        drawSurvivorIcon(ctx, iconX0 + i * iconSpacing, iconFloorY, t, iconScale);
       }
       ctx.textAlign = 'center';
     }

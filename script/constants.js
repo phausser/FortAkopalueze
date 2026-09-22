@@ -84,7 +84,7 @@ export const SCORE_REACTOR = 5000;
 export const SCORE_SURVIVOR = 500;
 export const SCORE_TIME_BONUS_PER_SEC = 50;
 export const TIME_BONUS_TICK_INTERVAL = 0.2;    // Sekunden-Countdown-Tally: 5 Ticks/s
-export const SURVIVOR_REVEAL_INTERVAL = 1 / 3;  // Abstand zwischen Überlebenden-Icons
+export const SURVIVOR_REVEAL_INTERVAL = 0.75;  // Abstand zwischen Überlebenden-Icons
 
 export const PICKUP_RADIUS = 6;
 export const PICKUP_COLLECT_DIST = 22;
