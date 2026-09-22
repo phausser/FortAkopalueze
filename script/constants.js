@@ -21,6 +21,9 @@ export const PARTICLE_COUNT = 12;
 export const ROOM_COUNT_MIN = 8;
 export const ROOM_COUNT_MAX = 12;
 export const MIN_TUNNEL_H = 120;
+export const EXIT_TUNNEL_W = 140;   // Breite der Oben/Unten-Ausgangs-Kerbe
+export const MAIN_PATH_MIN = 3;     // Länge des garantierten Pfads Start → Reaktor
+export const MAIN_PATH_MAX = 6;
 export const BG_COLORS = ['#662222', '#226622', '#442244', '#222266', '#444422'];
 
 export const ENEMY_HALF = 7;
@@ -73,7 +76,7 @@ export const REACTOR_SHAKE_EXPLODE = 20;
 export const REACTOR_ELECTRON_R = 4;
 
 export const BEAM_IN_DURATION = 1.2;
-export const ESCAPE_TIME = 10;
+export const ESCAPE_TIME_PER_ROOM = 5; // Sekunden pro entdecktem Raum
 
 export const SCORE_ENEMY = 100;
 export const SCORE_REACTOR = 5000;
@@ -81,6 +84,10 @@ export const SCORE_REACTOR = 5000;
 export const PICKUP_RADIUS = 6;
 export const PICKUP_COLLECT_DIST = 22;
 export const PICKUP_AMOUNT = 0.25;
+
+export const MINIMAP_CELL = 14;
+export const MINIMAP_GAP = 3;
+export const MINIMAP_MARGIN = 10;
 
 export const State = {
   MENU: 'menu',

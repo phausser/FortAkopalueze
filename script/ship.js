@@ -74,31 +74,36 @@ function resolveVsSegment(ax, ay, bx, by) {
 }
 
 export function resolveCollisions(room) {
-  const tEntrTop = room.entranceY - room.tunnelH / 2;
-  const tEntrBot = room.entranceY + room.tunnelH / 2;
-  const tExitTop = room.exitY - room.tunnelH / 2;
-  const tExitBot = room.exitY + room.tunnelH / 2;
-
+  // Kurvensegmente, die an einer Oben/Unten-Ausgangskerbe liegen (beide Enden
+  // auf dem Raumrand), blockieren nicht — dort ist der Schacht zum Nachbarraum.
   for (let i = 0; i < room.ceilingPoints.length - 1; i++) {
     const a = room.ceilingPoints[i], b = room.ceilingPoints[i + 1];
     if (ship.x + SHIP_RADIUS < a.x || ship.x - SHIP_RADIUS > b.x) continue;
+    if (a.y <= 0 && b.y <= 0) continue;
     if (resolveVsSegment(a.x, a.y, b.x, b.y)) applyCollisionDamage();
   }
 
   for (let i = 0; i < room.floorPoints.length - 1; i++) {
     const a = room.floorPoints[i], b = room.floorPoints[i + 1];
     if (ship.x + SHIP_RADIUS < a.x || ship.x - SHIP_RADIUS > b.x) continue;
+    if (a.y >= room.height && b.y >= room.height) continue;
     if (resolveVsSegment(a.x, a.y, b.x, b.y)) applyCollisionDamage();
   }
 
+  const left = room.exits.left, right = room.exits.right;
+  const leftTop = left ? left.pos - left.tunnelH / 2 : room.height / 2;
+  const leftBot = left ? left.pos + left.tunnelH / 2 : room.height / 2;
+  const rightTop = right ? right.pos - right.tunnelH / 2 : room.height / 2;
+  const rightBot = right ? right.pos + right.tunnelH / 2 : room.height / 2;
+
   if (ship.x - SHIP_RADIUS < 0) {
-    if (resolveVsSegment(0, 0, 0, tEntrTop)) applyCollisionDamage();
-    if (resolveVsSegment(0, tEntrBot, 0, room.height)) applyCollisionDamage();
+    if (resolveVsSegment(0, 0, 0, leftTop)) applyCollisionDamage();
+    if (resolveVsSegment(0, leftBot, 0, room.height)) applyCollisionDamage();
   }
 
   if (ship.x + SHIP_RADIUS > room.width) {
-    if (resolveVsSegment(room.width, 0, room.width, tExitTop)) applyCollisionDamage();
-    if (resolveVsSegment(room.width, tExitBot, room.width, room.height)) applyCollisionDamage();
+    if (resolveVsSegment(room.width, 0, room.width, rightTop)) applyCollisionDamage();
+    if (resolveVsSegment(room.width, rightBot, room.width, room.height)) applyCollisionDamage();
   }
 
   for (const obs of room.obstacles) {
