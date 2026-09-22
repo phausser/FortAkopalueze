@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, ENERGY_DRAIN, State, BEAM_IN_DURATION, ESCAPE_TIME_PER_ROOM, MINIMAP_CELL, MINIMAP_GAP, MINIMAP_MARGIN, SCORE_SURVIVOR, SCORE_TIME_BONUS_PER_SEC, TIME_BONUS_TICK_INTERVAL, SURVIVOR_REVEAL_INTERVAL } from './constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, SHIP_RADIUS, SHIP_THRUST, SHIP_STRAFE, SHIP_ROTATION_SPEED, SHIP_DAMPING, SHIP_DAMPING_BEAM_OUT, ENERGY_DRAIN, State, BEAM_IN_DURATION, BEAM_OUT_FINISH_SPEED, BEAM_OUT_MAX_DURATION, ESCAPE_TIME_PER_ROOM, MINIMAP_CELL, MINIMAP_GAP, MINIMAP_MARGIN, SCORE_SURVIVOR, SCORE_TIME_BONUS_PER_SEC, TIME_BONUS_TICK_INTERVAL, SURVIVOR_REVEAL_INTERVAL } from './constants.js';
 import { input } from './input.js';
 import { resources, resetResources } from './resources.js';
 import { particles, updateParticles, drawParticles } from './particles.js';
@@ -35,7 +35,9 @@ const game = {
 
 let thrustTrailTimer = 0;
 let beamInTimer = 0;
-let beamOutTimer = 0;
+let beamOutActive = false;
+let beamOutSpeed0 = 0;
+let beamOutElapsed = 0;
 let escapeTimer = -1;
 let winBonus = null;
 
@@ -66,7 +68,9 @@ function initLevel(level) {
   resetShip(game.rooms[0]);
   resetResources();
   escapeTimer = -1;
-  beamOutTimer = 0;
+  beamOutActive = false;
+  beamOutSpeed0 = 0;
+  beamOutElapsed = 0;
   winBonus = null;
   resetRescuedCount();
   startMusic(level);
@@ -185,11 +189,29 @@ function spawnBeamParticle() {
 }
 
 function updatePlaying(dt) {
-  if (beamOutTimer > 0) {
-    beamOutTimer = Math.max(0, beamOutTimer - dt);
+  if (beamOutActive) {
+    beamOutElapsed += dt;
+
+    // Keine Eingaben mehr — das Schiff gleitet nur noch aus (Trägheit) und wird dabei langsamer.
+    const d = Math.pow(SHIP_DAMPING_BEAM_OUT, dt * 60);
+    ship.vx *= d;
+    ship.vy *= d;
+    ship.x += ship.vx * dt;
+    ship.y += ship.vy * dt;
+
+    const room = game.rooms[game.currentRoomId];
+    if (room) {
+      resolveCollisions(room);
+      game.camX = Math.max(0, Math.min(ship.x - CANVAS_WIDTH / 2, Math.max(0, room.width - CANVAS_WIDTH)));
+      game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, room.height - CANVAS_HEIGHT)));
+    }
+
     for (let i = 0; i < 3; i++) spawnBeamParticle();
     updateParticles(dt);
-    if (beamOutTimer <= 0) {
+
+    const speed = Math.hypot(ship.vx, ship.vy);
+    if (speed <= BEAM_OUT_FINISH_SPEED || beamOutElapsed >= BEAM_OUT_MAX_DURATION) {
+      beamOutActive = false;
       stopAllLoops(); playWin(); startWinBonus(); game.setState(State.WIN);
     }
     return;
@@ -273,10 +295,12 @@ function updatePlaying(dt) {
   updateParticles(dt);
   handleRoomTransition(room);
 
-  // Kamera
-  if (room) {
-    game.camX = Math.max(0, Math.min(ship.x - CANVAS_WIDTH / 2, Math.max(0, room.width - CANVAS_WIDTH)));
-    game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, room.height - CANVAS_HEIGHT)));
+  // Kamera — nach handleRoomTransition erneut abfragen, da sich currentRoomId
+  // (und damit Raumgröße + Schiffsposition) im selben Frame geändert haben kann.
+  const currentRoom = game.rooms[game.currentRoomId];
+  if (currentRoom) {
+    game.camX = Math.max(0, Math.min(ship.x - CANVAS_WIDTH / 2, Math.max(0, currentRoom.width - CANVAS_WIDTH)));
+    game.camY = Math.max(0, Math.min(ship.y - CANVAS_HEIGHT / 2, Math.max(0, currentRoom.height - CANVAS_HEIGHT)));
   }
 
   if (resources.energy <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
@@ -290,7 +314,9 @@ function updatePlaying(dt) {
     if (escapeTimer <= 0) { stopAllLoops(); playDeath(); playGameOver(); game.setState(State.DEAD); return; }
     if (game.currentRoomId === 0) {
       stopThrust();
-      beamOutTimer = BEAM_IN_DURATION;
+      beamOutActive = true;
+      beamOutElapsed = 0;
+      beamOutSpeed0 = Math.max(Math.hypot(ship.vx, ship.vy), 20);
       return;
     }
   }
@@ -495,7 +521,7 @@ function renderPlaying(ctx) {
   drawProjectiles(ctx);
   drawParticles(ctx);
   if (beamInTimer > 0) ctx.globalAlpha = 1 - beamInTimer / BEAM_IN_DURATION;
-  else if (beamOutTimer > 0) ctx.globalAlpha = beamOutTimer / BEAM_IN_DURATION;
+  else if (beamOutActive) ctx.globalAlpha = Math.max(0, Math.min(1, Math.hypot(ship.vx, ship.vy) / beamOutSpeed0));
   drawShip(ctx);
   ctx.globalAlpha = 1;
   ctx.restore();

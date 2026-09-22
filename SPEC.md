@@ -212,7 +212,7 @@ Alle Gegner haben `hp`, ein geometrisches Sprite, eine Kollisionsbox und hinterl
 - Solange der Countdown läuft, pulsiert ein kräftiger roter Vollbild-Overlay im additiven Blend-Modus (`globalCompositeOperation = 'lighter'`, `rgba(255,20,20,α)`, `α` oszilliert über echte Zeit via `sin`) über der Spielwelt — additiv, damit auch schwarze Flächen (Höhlenwände) sichtbar rötlich einfärben statt reine Alpha-Überblendung. HUD, Minimap und Countdown-Text bleiben davon unbeeinflusst, da sie darüber gezeichnet werden.
 - Ziel: Startraum (Raum-ID 0) erreichen, bevor der Countdown abläuft.
 - Bei `t = 0`: `State.DEAD` („GAME OVER"-Screen, kein spezifischer Todesgrund-Text).
-- Bei rechtzeitigem Erreichen des Startraums: Schiff und Steuerung frieren ein, ein „Beam-out" (Partikel-Effekt + Alpha-Fade `1 → 0`, exakte Umkehrung des Level-Start-„Beam-in", Dauer `BEAM_IN_DURATION`) lässt das Schiff verschwinden — erst danach schaltet das Spiel auf `State.WIN`.
+- Bei rechtzeitigem Erreichen des Startraums: die Steuerung wird sofort blockiert, aber das Schiff gleitet mit seiner aktuellen Trägheit weiter (verstärkte Dämpfung `SHIP_DAMPING_BEAM_OUT`, Wandkollision bleibt aktiv) und wird dabei sichtbar langsamer — parallel dazu ein „Beam-out" (Teleport-Partikel + Alpha-Fade `1 → 0`, proportional zur aktuellen Geschwindigkeit relativ zur Geschwindigkeit beim Auslösen). Sobald die Geschwindigkeit nahe 0 ist (oder spätestens nach `BEAM_OUT_MAX_DURATION` als Sicherheitsnetz), verschwindet das Schiff vollständig — erst danach schaltet das Spiel auf `State.WIN`.
 
 ---
 

@@ -77,6 +77,9 @@ export const REACTOR_SHAKE_EXPLODE = 20;
 export const REACTOR_ELECTRON_R = 4;
 
 export const BEAM_IN_DURATION = 2.4;
+export const SHIP_DAMPING_BEAM_OUT = 0.95; // stärker als SHIP_DAMPING, damit das Ausgleiten spürbar zum Stillstand kommt
+export const BEAM_OUT_FINISH_SPEED = 3;    // px/s — darunter gilt das Ausgleiten als abgeschlossen
+export const BEAM_OUT_MAX_DURATION = 5;    // Sicherheitsnetz, falls die Geschwindigkeit nie unter die Schwelle fällt
 export const ESCAPE_TIME_PER_ROOM = 5; // Sekunden pro entdecktem Raum
 
 export const SCORE_ENEMY = 100;
