@@ -124,20 +124,27 @@ function pickType(rng) {
   return 'standard';
 }
 
-// Schneidet an [x0,x1] eine Kerbe in die Kurve (bis zum Raumrand), damit dort
-// ein sauberer, hindernisfreier Schacht zum Nachbarraum entsteht.
-function insertNotch(points, x0, x1, roomHeight, isCeiling) {
-  const y0 = interpolateWall(points, x0);
-  const y1 = interpolateWall(points, x1);
+// Schneidet an [x0,x1] eine Kerbe in die Kurve, damit dort ein hindernisfreier
+// Schacht zum Nachbarraum entsteht. Die Kerbe öffnet sich über eine schräge
+// Rampe (wie die Mündung der Links/Rechts-Tunnel), statt mit einer geraden
+// Wand abzubrechen — für eine natürlichere, zur Höhle passende Optik.
+function insertNotch(points, x0, x1, roomHeight, isCeiling, rng) {
+  const rampW0 = Math.round(lerp(70, 130, rng()));
+  const rampW1 = Math.round(lerp(70, 130, rng()));
+  const fx0 = Math.max(0, x0 - rampW0);
+  const fx1 = Math.min(points[points.length - 1].x, x1 + rampW1);
+  const fy0 = interpolateWall(points, fx0);
+  const fy1 = interpolateWall(points, fx1);
   const openY = isCeiling ? 0 : roomHeight;
-  const before = points.filter(p => p.x < x0);
-  const after = points.filter(p => p.x > x1);
+
+  const before = points.filter(p => p.x < fx0);
+  const after = points.filter(p => p.x > fx1);
   return [
     ...before,
-    { x: x0, y: Math.round(y0) },
-    { x: x0 + 0.5, y: openY },
-    { x: x1 - 0.5, y: openY },
-    { x: x1, y: Math.round(y1) },
+    { x: fx0, y: Math.round(fy0) },
+    { x: x0, y: openY },
+    { x: x1, y: openY },
+    { x: fx1, y: Math.round(fy1) },
     ...after,
   ];
 }
@@ -146,7 +153,7 @@ function insertNotch(points, x0, x1, roomHeight, isCeiling) {
 // Hindernisse/Deko im Weg hängen.
 export function getExitClearZones(exits, width, height) {
   const zones = [];
-  const EDGE = 160, MARGIN = 40;
+  const EDGE = 160, MARGIN = 40, RAMP_MARGIN = 140; // RAMP_MARGIN deckt die Oben/Unten-Rampe ab (max. 130px)
   if (exits.left) {
     const { pos, tunnelH } = exits.left;
     zones.push({ x0: 0, x1: EDGE, y0: pos - tunnelH / 2 - MARGIN, y1: pos + tunnelH / 2 + MARGIN });
@@ -156,10 +163,10 @@ export function getExitClearZones(exits, width, height) {
     zones.push({ x0: width - EDGE, x1: width, y0: pos - tunnelH / 2 - MARGIN, y1: pos + tunnelH / 2 + MARGIN });
   }
   if (exits.top) {
-    zones.push({ x0: exits.top.x0 - MARGIN, x1: exits.top.x1 + MARGIN, y0: 0, y1: EDGE });
+    zones.push({ x0: exits.top.x0 - RAMP_MARGIN, x1: exits.top.x1 + RAMP_MARGIN, y0: 0, y1: EDGE });
   }
   if (exits.bottom) {
-    zones.push({ x0: exits.bottom.x0 - MARGIN, x1: exits.bottom.x1 + MARGIN, y0: height - EDGE, y1: height });
+    zones.push({ x0: exits.bottom.x0 - RAMP_MARGIN, x1: exits.bottom.x1 + RAMP_MARGIN, y0: height - EDGE, y1: height });
   }
   return zones;
 }
@@ -218,18 +225,19 @@ function generateRoom(node, rng, spawnEnemiesForRoom, maxDepth) {
 
   let ceilPts = ceilingPoints, floorPts = floorPoints;
 
+  const NOTCH_MARGIN = 150; // Platz für die Rampe zwischen Kerbe und Raumkante
   if (node.connections.top) {
     const cx = Math.round(width * lerp(0.3, 0.7, rng()));
-    const x0 = Math.max(60, cx - EXIT_TUNNEL_W / 2);
-    const x1 = Math.min(width - 60, cx + EXIT_TUNNEL_W / 2);
-    ceilPts = insertNotch(ceilPts, x0, x1, height, true);
+    const x0 = Math.max(NOTCH_MARGIN, cx - EXIT_TUNNEL_W / 2);
+    const x1 = Math.min(width - NOTCH_MARGIN, cx + EXIT_TUNNEL_W / 2);
+    ceilPts = insertNotch(ceilPts, x0, x1, height, true, rng);
     exits.top = { pos: cx, tunnelW: x1 - x0, x0, x1, toRoomId: node.connections.top.id };
   }
   if (node.connections.bottom) {
     const cx = Math.round(width * lerp(0.3, 0.7, rng()));
-    const x0 = Math.max(60, cx - EXIT_TUNNEL_W / 2);
-    const x1 = Math.min(width - 60, cx + EXIT_TUNNEL_W / 2);
-    floorPts = insertNotch(floorPts, x0, x1, height, false);
+    const x0 = Math.max(NOTCH_MARGIN, cx - EXIT_TUNNEL_W / 2);
+    const x1 = Math.min(width - NOTCH_MARGIN, cx + EXIT_TUNNEL_W / 2);
+    floorPts = insertNotch(floorPts, x0, x1, height, false, rng);
     exits.bottom = { pos: cx, tunnelW: x1 - x0, x0, x1, toRoomId: node.connections.bottom.id };
   }
 

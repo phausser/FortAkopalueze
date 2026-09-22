@@ -23,7 +23,6 @@ const game = {
   rooms: [],
   currentRoomId: 0,
   reactorRoom: null,
-  reactorExitSide: null,
   minimapLayout: null,
   camX: 0,
   camY: 0,
@@ -49,7 +48,6 @@ function initLevel(level) {
   }, level + 1);
 
   game.reactorRoom = game.rooms.find(r => r.type === 'reactor');
-  game.reactorExitSide = SIDES.find(side => game.reactorRoom.exits[side]);
   game.reactorRoom.pickups = [];
   spawnReactor(game.reactorRoom);
   spawnSurvivorsForLevel(game.rooms, game.seed, level);
@@ -210,7 +208,6 @@ function updatePlaying(dt) {
   const room = game.rooms[game.currentRoomId];
   if (room) {
     resolveCollisions(room);
-    if (room === game.reactorRoom && escapeTimer < 0) blockReactorExit(room);
     updateEnemies(room, dt);
     updateProjectiles(room, dt);
     updateEnemyProjectiles(room, dt);
@@ -379,60 +376,6 @@ function renderMenu(ctx) {
   ctx.fillText('ENTER oder LEERTASTE zum Starten', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
-// Blockiert den einzigen Ausgang des Reaktor-Raums, solange der Reaktor intakt ist.
-function blockReactorExit(room) {
-  const side = game.reactorExitSide;
-  const exit = room.exits[side];
-  if (!exit) return;
-
-  if (side === 'left' || side === 'right') {
-    const top = exit.pos - exit.tunnelH / 2;
-    const bot = exit.pos + exit.tunnelH / 2;
-    if (ship.y + SHIP_RADIUS <= top || ship.y - SHIP_RADIUS >= bot) return;
-    if (side === 'right' && ship.x + SHIP_RADIUS > room.width - 8) {
-      ship.x = room.width - 8 - SHIP_RADIUS;
-      if (ship.vx > 0) ship.vx = 0;
-    } else if (side === 'left' && ship.x - SHIP_RADIUS < 8) {
-      ship.x = 8 + SHIP_RADIUS;
-      if (ship.vx < 0) ship.vx = 0;
-    }
-  } else {
-    if (ship.x + SHIP_RADIUS <= exit.x0 || ship.x - SHIP_RADIUS >= exit.x1) return;
-    if (side === 'bottom' && ship.y + SHIP_RADIUS > room.height - 8) {
-      ship.y = room.height - 8 - SHIP_RADIUS;
-      if (ship.vy > 0) ship.vy = 0;
-    } else if (side === 'top' && ship.y - SHIP_RADIUS < 8) {
-      ship.y = 8 + SHIP_RADIUS;
-      if (ship.vy < 0) ship.vy = 0;
-    }
-  }
-}
-
-function drawExitBarrier(ctx, room) {
-  const side = game.reactorExitSide;
-  const exit = room.exits[side];
-  if (!exit) return;
-  const stripeH = 8;
-
-  if (side === 'left' || side === 'right') {
-    const top = exit.pos - exit.tunnelH / 2;
-    const bot = exit.pos + exit.tunnelH / 2;
-    const x = side === 'right' ? room.width - 8 : 0;
-    for (let y = top; y < bot; y += stripeH) {
-      const i = Math.floor((y - top) / stripeH);
-      ctx.fillStyle = i % 2 === 0 ? '#cc1111' : '#ffffff';
-      ctx.fillRect(x, y, 8, Math.min(stripeH, bot - y));
-    }
-  } else {
-    const y = side === 'bottom' ? room.height - 8 : 0;
-    for (let x = exit.x0; x < exit.x1; x += stripeH) {
-      const i = Math.floor((x - exit.x0) / stripeH);
-      ctx.fillStyle = i % 2 === 0 ? '#cc1111' : '#ffffff';
-      ctx.fillRect(x, y, Math.min(stripeH, exit.x1 - x), 8);
-    }
-  }
-}
-
 function drawMinimap(ctx) {
   const layout = game.minimapLayout;
   if (!layout) return;
@@ -483,7 +426,6 @@ function renderPlaying(ctx) {
   ctx.save();
   ctx.translate(-game.camX + shakeX, -game.camY + shakeY);
   drawRoom(ctx, room);
-  if (room === game.reactorRoom && escapeTimer < 0) drawExitBarrier(ctx, room);
   drawReactor(ctx, room);
   drawPickups(ctx, room);
   drawSurvivors(ctx, room);
