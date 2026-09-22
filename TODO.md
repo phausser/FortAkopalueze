@@ -51,7 +51,7 @@
   Letzter Raum des Hauptpfads enthält zentralen Reaktor (Atom-Symbol-Optik, rotierende Orbitringe). 25 Treffer zum Zerstören. Nach Zerstörung: Explosionssequenz mit Screen-Shake und Partikel-Burst (250), danach startet die Escape-Phase. Reaktorkern-Kontakt und Laser-Kontakt ziehen beide kontinuierlich Energie ab (umgehen Schild + Unverwundbarkeit) statt eines fixen Instant-Schadens.
 
 - [x] **23. Level-System**
-  Level N hat `N + 1` Räume. Nach Reaktorzerstörung + Escape: Win-Screen zeigt „Mit ENTER oder LEERTASTE zum Level X". Levelstart zeigt „Level X – Zerstöre den Reaktor" (2.5 s, überspringbar). Ressourcen werden zu Levelstart vollständig aufgeladen. Score läuft über alle Level weiter, setzt nur bei neuem Spiel aus dem Menü zurück.
+  Level N hat `N + 1` Räume. Nach Reaktorzerstörung + Escape: Win-Screen zeigt „MIT ENTER ODER LEERTASTE ZUM LEVEL X". Levelstart zeigt „LEVEL X – ZERSTÖRE DEN REAKTOR" (2.5 s, überspringbar). Ressourcen werden zu Levelstart vollständig aufgeladen. Score läuft über alle Level weiter, setzt nur bei neuem Spiel aus dem Menü zurück.
 
 - [x] **15. Escape-Phase: Countdown nach Reaktorzerstörung**
   Countdown läuft dynamisch (`5 s × Anzahl entdeckter Räume`, keine feste Zeit). Spieler muss zurück zum Startraum. Bei 0 Sekunden: `State.DEAD`. Bei rechtzeitigem Erreichen: `State.WIN`. **Abweichung vom ursprünglichen Plan:** Räume werden beim Rückweg *nicht* mit mehr Gegnern neu bevölkert — bereits besiegte Gegner bleiben besiegt.
@@ -68,7 +68,7 @@
   Generisches Partikel-System implementiert: Treffer-Funken, Schub-Trail, Raketen-Trail, Minen-/Reaktor-Explosions-Burst, Level-Intro-„Beam-in". Partikel mit Lebensdauer, Geschwindigkeit, Alpha-Fade-out, optionalem `maxLife`/`color`-Feld.
 
 - [ ] **17. Visuelles Styling & Atmosphäre**
-  Erledigt: dunkler Hintergrund, Wände schwarz, weißes Schiff/Gegner/HUD, Glow via `shadowBlur`, zwei Parallax-Blur-Ebenen, Screen-Shake, Google-Font „Michroma" für UI-Text.
+  Erledigt: dunkler Hintergrund, Wände schwarz, weißes Schiff/Gegner/HUD, Glow via `shadowBlur`, zwei Parallax-Blur-Ebenen, Screen-Shake, Google-Font „Michroma" für UI-Text (durchgängig in Großbuchstaben gesetzt, da Michromas Kleinbuchstaben verzerrt wirken).
   Offen: Scan-Line-Overlay für Retro-Look, flackernde Raumbeleuchtung.
 
 - [x] **18. Sound-Effekte (Web Audio API)**

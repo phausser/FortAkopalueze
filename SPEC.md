@@ -30,7 +30,7 @@ MENU → LEVEL_INTRO → PLAYING → WIN → LEVEL_INTRO (nächstes Level) → �
 | State | Beschreibung |
 |---|---|
 | `MENU` | Titelscreen, „ENTER/LEERTASTE zum Starten" |
-| `LEVEL_INTRO` | Einblendung „Level X – Zerstöre den Reaktor" (2.5 s, überspringbar mit Enter/Space) |
+| `LEVEL_INTRO` | Einblendung „LEVEL X – ZERSTÖRE DEN REAKTOR" (2.5 s, überspringbar mit Enter/Space) |
 | `PLAYING` | Normales Spiel. Nach Reaktor-Zerstörung läuft die komplette Escape-Phase (Countdown, Sieg-/Todesprüfung) ebenfalls innerhalb dieses States |
 | `WIN` | Startraum (Raum-ID 0) rechtzeitig während der Escape-Phase erreicht |
 | `DEAD` | Energie = 0, oder Escape-Countdown abgelaufen |
@@ -220,7 +220,7 @@ Beim Erreichen von `State.WIN` wird der Score in zwei animierten Phasen um Zeit-
 
 1. **Zeitbonus** (Format `50 × {Sekunden}s`): die im Moment des Sieges verbleibenden Escape-Sekunden (aufgerundet) zählen **hoch** — beginnend bei 0 bis zum vollen Wert, `5 Ticks/s` (alle `0.2 s` ein Tick), pro Tick `+50` Punkte direkt auf den Score. Am Ende der Animation steht die tatsächliche Sekundenzahl da. Bei 0 Sekunden entfällt die Zeile komplett.
 2. **Rettungsbonus** (Format `500 × [Icons]`): sobald die Zeitbonus-Phase abgeschlossen ist, blendet die Zeile ein und für jeden in diesem Level geretteten Überlebenden erscheint direkt hinter dem `500 ×`-Label ein Icon (gleiches Sprite wie im Spiel, im selben Hellgrau wie der Text, vertikal auf die Textmitte zentriert, geringfügig größer als die Schrifthöhe), nacheinander im Abstand von `0.75 s`, jeweils mit `+500` Punkten auf den Score. Bei 0 Geretteten entfällt die Zeile komplett.
-3. Erst wenn beide Phasen durchlaufen sind (`phase === 'done'`), erscheint der Hinweis „Mit ENTER oder LEERTASTE zum Level X" — vorher ist der Levelwechsel blockiert.
+3. Erst wenn beide Phasen durchlaufen sind (`phase === 'done'`), erscheint der Hinweis „MIT ENTER ODER LEERTASTE ZUM LEVEL X" — vorher ist der Levelwechsel blockiert.
 
 Ist eine Phase von vornherein leer (0 Sekunden übrig bzw. 0 Gerettete), wird direkt mit der nächsten Phase begonnen bzw. sofort `done` erreicht.
 
@@ -251,6 +251,7 @@ Verwendet für: Projektil-/Wandtreffer (12 Partikel, `120 px/s`, `0.42 s`), Schu
 - **Glow:** `ctx.shadowBlur` für Laser, Extras, Reaktor-Blitz.
 - **Parallax-Blur-Ebenen** und **Screen-Shake** (siehe „Kamera & Minimap").
 - Alle Sprites sind rein geometrisch – keine Bitmaps.
+- **Text:** Michroma ist als reine Versalschrift gezeichnet — ihre Kleinbuchstaben wirken deutlich unruhiger/verzerrt als die Großbuchstaben. Deshalb wird sämtlicher UI-Text (Menü, Level-Intro, Game-Over, Win-Screen) in GROSSBUCHSTABEN gesetzt; nur numerische Anzeigen (Score, Countdown, Bonus-Zahlen) und die Sekunden-Einheit `s` bleiben unverändert.
 - Scan-Line-Overlay und flackernde Raumbeleuchtung sind **nicht implementiert** (siehe TODO #17).
 
 ---

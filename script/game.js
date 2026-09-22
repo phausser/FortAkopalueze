@@ -418,7 +418,7 @@ function renderMenu(ctx) {
   ctx.textAlign = 'center';
   ctx.fillText('FORT AKOPALUEZE', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
   ctx.font = '16px "Michroma", sans-serif';
-  ctx.fillText('ENTER oder LEERTASTE zum Starten', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+  ctx.fillText('ENTER ODER LEERTASTE ZUM STARTEN', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 function drawMinimap(ctx) {
@@ -506,9 +506,9 @@ function renderLevelIntro(ctx) {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 64px "Michroma", sans-serif';
-  ctx.fillText(`Level ${game.level}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+  ctx.fillText(`LEVEL ${game.level}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
   ctx.font = '20px "Michroma", sans-serif';
-  ctx.fillText('Zerstöre den Reaktor', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+  ctx.fillText('ZERSTÖRE DEN REAKTOR', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 function renderDead(ctx) {
@@ -519,7 +519,7 @@ function renderDead(ctx) {
   ctx.textAlign = 'center';
   ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
   ctx.font = '18px "Michroma", sans-serif';
-  ctx.fillText('ENTER zum Neustart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+  ctx.fillText('ENTER ZUM NEUSTART', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 function renderWin(ctx) {
@@ -529,7 +529,7 @@ function renderWin(ctx) {
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 40px "Michroma", sans-serif';
-  ctx.fillText('Reaktor zerstört', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 170);
+  ctx.fillText('REAKTOR ZERSTÖRT', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 170);
 
   ctx.font = 'bold 56px "Michroma", sans-serif';
   ctx.fillText(String(score.value).padStart(6, '0'), CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 100);
@@ -575,7 +575,7 @@ function renderWin(ctx) {
   if (!winBonus || winBonus.phase === 'done') {
     ctx.font = '18px "Michroma", sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Mit ENTER oder LEERTASTE zum Level ${game.level + 1}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 130);
+    ctx.fillText(`MIT ENTER ODER LEERTASTE ZUM LEVEL ${game.level + 1}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 130);
   }
 }
 
