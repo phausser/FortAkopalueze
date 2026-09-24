@@ -1,9 +1,9 @@
-import { PICKUP_RADIUS, PICKUP_COLLECT_DIST, PICKUP_AMOUNT } from './constants.js';
+import { PICKUP_RADIUS, PICKUP_COLLECT_DIST, PICKUP_AMOUNT, MIN_OBJECT_DIST } from './constants.js';
 import { resources } from './resources.js';
 import { ship } from './ship.js';
 import { spawnImpactParticles } from './particles.js';
 import { playPickup } from './sound.js';
-import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX, overlapsRoomObjects } from './level.js';
 
 const KINDS = ['energy', 'shield', 'ammo'];
 
@@ -26,6 +26,7 @@ export function spawnPickupsForRoom(room, rng) {
       const margin = PICKUP_RADIUS + 20;
       if (floorY - ceilY < margin * 2 + 20) continue;
       const y = ceilY + margin + rng() * (floorY - ceilY - margin * 2);
+      if (overlapsRoomObjects(room, x, y, MIN_OBJECT_DIST)) continue;
       const kind = i === 0 ? 'energy' : KINDS[Math.floor(rng() * 3)];
       room.pickups.push({ x, y, kind });
       break;

@@ -27,6 +27,8 @@ export const MAIN_PATH_MIN = 3;     // Länge des garantierten Pfads Start → R
 export const MAIN_PATH_MAX = 6;
 export const BG_COLORS = ['#662222', '#226622', '#442244', '#222266', '#444422'];
 
+export const MIN_OBJECT_DIST = 90; // Mindestabstand zwischen Gegnern/Lasern/Pickups/Überlebenden beim Spawnen
+
 export const ENEMY_HALF = 7;
 export const ENEMY_PATROL_SPD = 80;
 export const ENEMY_CHASE_SPD = 150;

@@ -2,28 +2,17 @@ import {
   SHIP_RADIUS,
   LASER_ON_MIN, LASER_ON_MAX, LASER_OFF_MIN, LASER_OFF_MAX,
   LASER_DAMAGE, LASER_EMITTER_HP, LASER_EMITTER_R, LASER_COLOR,
-  MISSILE_EXPLODE_TIME,
+  MISSILE_EXPLODE_TIME, MIN_OBJECT_DIST,
 } from './constants.js';
 import { ship } from './ship.js';
 import { resources } from './resources.js';
 import { spawnImpactParticles } from './particles.js';
-import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX, overlapsRoomObjects } from './level.js';
 import { enemyProjectiles } from './enemies.js';
 import { missiles } from './missiles.js';
 import { projectiles } from './projectiles.js';
 import { playLaserEmitterDestroyed, startLaserContact, stopLaserContact } from './sound.js';
-
-function distToSegment(px, py, ax, ay, bx, by) {
-  const dx = bx - ax, dy = by - ay;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq < 0.0001) {
-    const ex = px - ax, ey = py - ay;
-    return Math.sqrt(ex * ex + ey * ey);
-  }
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
-  const cx = ax + t * dx - px, cy = ay + t * dy - py;
-  return Math.sqrt(cx * cx + cy * cy);
-}
+import { distToSegment } from './geometry.js';
 
 export function spawnLasersForRoom(room, rng) {
   room.lasers = [];
@@ -32,16 +21,20 @@ export function spawnLasersForRoom(room, rng) {
   const count = Math.floor(rng() * 3); // 0, 1 oder 2
   const zones = getExitClearZones(room.exits, room.width, room.height);
   for (let i = 0; i < count; i++) {
-    let ax, bx;
+    let ax, bx, ay, by, placed = false;
     for (let attempt = 0; attempt < 8; attempt++) {
       ax = room.width * lerp(0.2, 0.8, rng());
       // Diagonale: Boden-Emitter bis ±250px versetzt
       const offset = (rng() - 0.5) * 500;
       bx = Math.max(50, Math.min(room.width - 50, ax + offset));
-      if (!overlapsExitZonesX(zones, ax, 8) && !overlapsExitZonesX(zones, bx, 8)) break;
+      if (overlapsExitZonesX(zones, ax, 8) || overlapsExitZonesX(zones, bx, 8)) continue;
+      ay = interpolateWall(room.ceilingPoints, ax);
+      by = interpolateWall(room.floorPoints, bx);
+      if (overlapsRoomObjects(room, ax, ay, MIN_OBJECT_DIST) || overlapsRoomObjects(room, bx, by, MIN_OBJECT_DIST)) continue;
+      placed = true;
+      break;
     }
-    const ay = interpolateWall(room.ceilingPoints, ax);
-    const by = interpolateWall(room.floorPoints, bx);
+    if (!placed) continue;
 
     room.lasers.push({
       ax, ay, bx, by,

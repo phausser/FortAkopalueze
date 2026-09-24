@@ -2,9 +2,10 @@ import {
   SHIP_RADIUS,
   ENEMY_HALF, ENEMY_PATROL_SPD, ENEMY_CHASE_SPD, ENEMY_CHASE_DIST,
   ENEMY_FLEE_DIST, ENEMY_MIN_DIST, ENEMY_FIRE_RATE, ENEMY_PROJ_SPEED, ENEMY_DMG,
+  MIN_OBJECT_DIST,
 } from './constants.js';
 import { ship, applyDamage } from './ship.js';
-import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX, overlapsRoomObjects } from './level.js';
 import { playEnemyShoot } from './sound.js';
 
 export function spawnHelicopter(room, rng) {
@@ -16,6 +17,7 @@ export function spawnHelicopter(room, rng) {
     const floorY = interpolateWall(room.floorPoints, x);
     if (floorY - ceilY < ENEMY_HALF * 2 + 40) continue;
     const y = lerp(ceilY + ENEMY_HALF + 10, floorY - ENEMY_HALF - 10, rng());
+    if (overlapsRoomObjects(room, x, y, MIN_OBJECT_DIST)) continue;
     return {
       kind: 'helicopter',
       x, y,

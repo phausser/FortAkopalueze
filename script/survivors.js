@@ -1,6 +1,8 @@
-import { interpolateWall, lerp, makePRNG, getExitClearZones, overlapsExitZonesX } from './level.js';
+import { interpolateWall, lerp, makePRNG, getExitClearZones, overlapsExitZonesX, overlapsRoomObjects } from './level.js';
 import { ship } from './ship.js';
 import { spawnImpactParticles } from './particles.js';
+import { playRescue } from './sound.js';
+import { MIN_OBJECT_DIST } from './constants.js';
 
 const COLLECT_DIST = 35;
 const HEAD_R = 5;
@@ -29,6 +31,7 @@ export function spawnSurvivorsForLevel(rooms, seed, count) {
       const floorY = interpolateWall(room.floorPoints, x);
       const ceilY = interpolateWall(room.ceilingPoints, x);
       if (floorY - ceilY < HEAD_R * 2 + BODY_H + 40) continue;
+      if (overlapsRoomObjects(room, x, floorY, MIN_OBJECT_DIST)) continue;
       room.survivors.push({ x, floorY });
       break;
     }
@@ -44,6 +47,7 @@ export function updateSurvivors(room) {
     if (dx * dx + dy * dy < COLLECT_DIST * COLLECT_DIST) {
       survivorState.rescuedCount++;
       spawnImpactParticles(s.x, s.floorY);
+      playRescue();
       room.survivors.splice(i, 1);
     }
   }

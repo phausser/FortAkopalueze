@@ -1,10 +1,10 @@
 import {
   MINE_RADIUS, MINE_HP, MINE_ALERT_DIST, MINE_TRIGGER_DIST,
-  MINE_EXPLOSION_RADIUS, MINE_DAMAGE_MAX,
+  MINE_EXPLOSION_RADIUS, MINE_DAMAGE_MAX, MIN_OBJECT_DIST,
 } from './constants.js';
 import { ship, applyDamage } from './ship.js';
 import { particles, spawnImpactParticles } from './particles.js';
-import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX, overlapsRoomObjects } from './level.js';
 import { playMineAlert, playMineExplode } from './sound.js';
 
 export function spawnMine(room, rng) {
@@ -16,6 +16,7 @@ export function spawnMine(room, rng) {
     const floorY = interpolateWall(room.floorPoints, x);
     if (floorY - ceilY < MINE_RADIUS * 2 + 40) continue;
     const y = lerp(ceilY + MINE_RADIUS + 10, floorY - MINE_RADIUS - 10, rng());
+    if (overlapsRoomObjects(room, x, y, MIN_OBJECT_DIST)) continue;
     return {
       kind: 'mine',
       x, y,

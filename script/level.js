@@ -1,4 +1,5 @@
 import { BG_COLORS, MIN_TUNNEL_H, EXIT_TUNNEL_W, MAIN_PATH_MIN, MAIN_PATH_MAX } from './constants.js';
+import { distToSegment } from './geometry.js';
 
 export function makePRNG(seed) {
   let s = seed >>> 0;
@@ -174,6 +175,36 @@ export function getExitClearZones(exits, width, height) {
 export function overlapsExitZonesX(zones, x, w) {
   const x0 = x - w / 2, x1 = x + w / 2;
   return zones.some(z => x1 > z.x0 && x0 < z.x1);
+}
+
+// Prüft, ob (x, y) zu nah an bereits im Raum platzierten Gegnern, Lasern, Pickups
+// oder Überlebenden liegt — verhindert z.B. Überlebende direkt im Laserstrahl.
+export function overlapsRoomObjects(room, x, y, minDist) {
+  const minDistSq = minDist * minDist;
+  if (room.enemies) {
+    for (const e of room.enemies) {
+      const dx = x - e.x, dy = y - e.y;
+      if (dx * dx + dy * dy < minDistSq) return true;
+    }
+  }
+  if (room.pickups) {
+    for (const p of room.pickups) {
+      const dx = x - p.x, dy = y - p.y;
+      if (dx * dx + dy * dy < minDistSq) return true;
+    }
+  }
+  if (room.survivors) {
+    for (const s of room.survivors) {
+      const dx = x - s.x, dy = y - s.floorY;
+      if (dx * dx + dy * dy < minDistSq) return true;
+    }
+  }
+  if (room.lasers) {
+    for (const L of room.lasers) {
+      if (distToSegment(x, y, L.ax, L.ay, L.bx, L.by) < minDist) return true;
+    }
+  }
+  return false;
 }
 
 function generateRoom(node, rng, spawnEnemiesForRoom, maxDepth) {

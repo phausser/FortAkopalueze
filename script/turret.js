@@ -1,9 +1,9 @@
 import {
   TURRET_HP, TURRET_FIRE_RATE, TURRET_ROT_SPEED, TURRET_RANGE,
-  TURRET_BODY_R, TURRET_BARREL_L,
+  TURRET_BODY_R, TURRET_BARREL_L, MIN_OBJECT_DIST,
 } from './constants.js';
 import { ship } from './ship.js';
-import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX } from './level.js';
+import { interpolateWall, lerp, getExitClearZones, overlapsExitZonesX, overlapsRoomObjects } from './level.js';
 import { spawnMissile } from './missiles.js';
 import { hasLineOfSight, wrapAngle } from './geometry.js';
 
@@ -16,6 +16,7 @@ export function spawnTurret(room, rng) {
     const wallY = onFloor
       ? interpolateWall(room.floorPoints, x)
       : interpolateWall(room.ceilingPoints, x);
+    if (overlapsRoomObjects(room, x, wallY, MIN_OBJECT_DIST)) continue;
     return {
       kind: 'turret',
       x,

@@ -28,3 +28,15 @@ export function hasLineOfSight(room, x1, y1, x2, y2) {
 export function wrapAngle(a) {
   return a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
 }
+
+export function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 0.0001) {
+    const ex = px - ax, ey = py - ay;
+    return Math.sqrt(ex * ex + ey * ey);
+  }
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+  const cx = ax + t * dx - px, cy = ay + t * dy - py;
+  return Math.sqrt(cx * cx + cy * cy);
+}

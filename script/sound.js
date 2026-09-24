@@ -136,14 +136,60 @@ export function playPickup(kind) {
   tone({ freq, wave: 'sine', peak: 0.32, freqEnd: freq * 1.5, duration: 0.25 });
 }
 
-export function playWin() {
+export function playRescue() {
   const c = getCtx();
-  [523, 659, 784, 1047].forEach((f, i) => {
-    const start = c.currentTime + i * 0.13;
+  const now = c.currentTime;
+
+  // Warmes Zwei-Ton-"Bestätigt"-Chirpen, Dreieckswelle statt der hellen Sinus-Pickups
+  [440, 659].forEach((f, i) => {
+    const start = now + i * 0.09;
     const osc = c.createOscillator();
+    osc.type = 'triangle';
     osc.frequency.value = f;
     const gain = c.createGain();
-    gain.gain.setValueAtTime(0.28, start);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.linearRampToValueAtTime(0.3, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(start);
+    osc.stop(start + 0.3);
+  });
+
+  // Tiefer Sub-Bass-Thump, verankert das Chirpen im Reaktor-Klangbild
+  tone({ freq: 95, wave: 'sine', peak: 0.22, freqEnd: 55, duration: 0.3 });
+}
+
+export function playWin() {
+  const c = getCtx();
+  const now = c.currentTime;
+
+  // Reaktor-Bass-Swell unter der Fanfare, greift die tiefe Drone der Level-Musik auf
+  const subOsc = c.createOscillator();
+  subOsc.type = 'sawtooth';
+  subOsc.frequency.setValueAtTime(45, now);
+  subOsc.frequency.exponentialRampToValueAtTime(90, now + 0.85);
+  const subFilt = c.createBiquadFilter();
+  subFilt.type = 'lowpass';
+  subFilt.frequency.value = 300;
+  const subGain = c.createGain();
+  subGain.gain.setValueAtTime(0.001, now);
+  subGain.gain.linearRampToValueAtTime(0.32, now + 0.15);
+  subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+  subOsc.connect(subFilt);
+  subFilt.connect(subGain);
+  subGain.connect(c.destination);
+  subOsc.start(now);
+  subOsc.stop(now + 1.0);
+
+  // Aufsteigendes Arpeggio, Dreieckswelle statt reinem Sinus für einen wärmeren, weniger chiptune-hellen Klang
+  [523, 659, 784, 1047].forEach((f, i) => {
+    const start = now + i * 0.13;
+    const osc = c.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(0.26, start);
     gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
     osc.connect(gain);
     gain.connect(c.destination);
