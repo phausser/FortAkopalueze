@@ -17,6 +17,16 @@ import { startThrust, stopThrust, stopAllLoops, playDeath, playGameOver, playWin
 
 // ─── Spielstand ───────────────────────────────────────────────────────────────
 
+// Startlevel per URL-Parameter, z.B. ?l=3 — fällt auf Level 1 zurück, falls
+// kein gültiger Wert übergeben wurde.
+function getStartLevelFromURL() {
+  const raw = new URLSearchParams(window.location.search).get('l');
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+const START_LEVEL = getStartLevelFromURL();
+
 const game = {
   state: State.MENU,
   previousTime: 0,
@@ -131,7 +141,7 @@ function computeMinimapLayout(rooms) {
 
 function updateMenu() {
   if (input.isJustPressed('Enter') || input.isJustPressed('Space')) {
-    game.level = 1;
+    game.level = START_LEVEL;
     resetScore();
     initLevel(game.level);
     game.levelIntroTimer = 2.5;
@@ -473,6 +483,10 @@ function renderMenu(ctx) {
   ctx.fillText('FORT AKOPALUEZE', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
   ctx.font = '16px "Michroma", sans-serif';
   ctx.fillText('ENTER ODER LEERTASTE ZUM STARTEN', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+  if (START_LEVEL !== 1) {
+    ctx.font = '13px "Michroma", sans-serif';
+    ctx.fillText(`STARTLEVEL ${START_LEVEL}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60);
+  }
 }
 
 function drawMinimap(ctx) {
