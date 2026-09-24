@@ -40,6 +40,9 @@ let beamOutSpeed0 = 0;
 let beamOutElapsed = 0;
 let escapeTimer = -1;
 let winBonus = null;
+let visitedEdges = new Set();
+
+function edgeKey(a, b) { return a < b ? `${a}-${b}` : `${b}-${a}`; }
 
 // ─── Level-Initialisierung ────────────────────────────────────────────────────
 
@@ -59,6 +62,7 @@ function initLevel(level) {
   game.currentRoomId = 0;
   game.rooms[0].discovered = true;
   game.minimapLayout = computeMinimapLayout(game.rooms);
+  visitedEdges = new Set();
   game.camX = 0;
   game.camY = 0;
   projectiles.length = 0;
@@ -169,6 +173,7 @@ function handleRoomTransition(room) {
 
     game.currentRoomId = target.id;
     target.discovered = true;
+    visitedEdges.add(edgeKey(room.id, target.id));
     enemyProjectiles.length = 0;
     missiles.length = 0;
     return;
@@ -466,21 +471,53 @@ function drawMinimap(ctx) {
   if (!layout) return;
 
   const cell = MINIMAP_CELL, gap = MINIMAP_GAP;
-  const cols = layout.maxGx - layout.minGx + 1;
   const rows = layout.maxGy - layout.minGy + 1;
   const totalH = rows * cell + (rows - 1) * gap;
   const originX = MINIMAP_MARGIN;
   const originY = CANVAS_HEIGHT - MINIMAP_MARGIN - totalH;
 
+  const cellRect = (room) => ({
+    x: originX + (room.gx - layout.minGx) * (cell + gap),
+    y: originY + (room.gy - layout.minGy) * (cell + gap),
+  });
+
+  // Durchflogene Verbindungen als kleine Striche zwischen den Boxen, unter den Boxen selbst.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.lineWidth = 1.5;
+  for (const key of visitedEdges) {
+    const [aId, bId] = key.split('-').map(Number);
+    const a = game.rooms[aId], b = game.rooms[bId];
+    if (!a || !b) continue;
+    const ra = cellRect(a), rb = cellRect(b);
+    ctx.beginPath();
+    ctx.moveTo(ra.x + cell / 2, ra.y + cell / 2);
+    ctx.lineTo(rb.x + cell / 2, rb.y + cell / 2);
+    ctx.stroke();
+  }
+
+  const blinkOn = Math.floor(performance.now() / 250) % 2 === 0;
+  const escaping = escapeTimer >= 0;
+
   for (const room of game.rooms) {
     if (!room.discovered) continue;
-    const x = originX + (room.gx - layout.minGx) * (cell + gap);
-    const y = originY + (room.gy - layout.minGy) * (cell + gap);
+    const { x, y } = cellRect(room);
     const isCurrent = room.id === game.currentRoomId;
+    const isGoal = room.id === 0;
 
-    ctx.fillStyle = isCurrent ? '#ffffff' : 'rgba(255, 255, 255, 0.12)';
+    let fill, stroke;
+    if (isGoal) {
+      let alpha = isCurrent ? 0.6 : 0.35;
+      if (escaping) alpha = blinkOn ? 1 : 0.15; // während des Countdowns blinkt der Ziel-/Startraum
+      fill = `rgba(68, 255, 136, ${alpha})`;
+      stroke = '#44ff88';
+    } else {
+      fill = isCurrent ? '#ffffff' : 'rgba(255, 255, 255, 0.12)';
+      stroke = isCurrent ? '#ffffff' : '#aaaaaa';
+    }
+
+    ctx.fillStyle = fill;
     ctx.fillRect(x, y, cell, cell);
-    ctx.strokeStyle = isCurrent ? '#ffffff' : '#aaaaaa';
+    ctx.strokeStyle = stroke;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(x + 0.75, y + 0.75, cell - 1.5, cell - 1.5);
   }

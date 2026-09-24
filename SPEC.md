@@ -235,7 +235,7 @@ Ist eine Phase von vornherein leer (0 Sekunden übrig bzw. 0 Gerettete), wird di
 - Raumwechsel: sofortiger Schnitt (kein Fade), Schiff wird am Eingang der Gegenseite platziert.
 - Zwei geblurrte Parallax-Hintergrundebenen (30 px / 70 px Blur) folgen der Kamera mit 30 % / 60 % Geschwindigkeit für Tiefenwirkung.
 - Screen-Shake bei Reaktortreffern (`6 px`) und -explosion (`20 px`, klingt über Zeit ab).
-- **Minimap** (unten links): ein Kästchen (14×14 px, 3 px Abstand) pro Rasterzelle des Höhlen-Graphs, nur entdeckte Räume sichtbar, aktueller Raum weiß hervorgehoben.
+- **Minimap** (unten links): ein Kästchen (14×14 px, 3 px Abstand) pro Rasterzelle des Höhlen-Graphs, nur entdeckte Räume sichtbar, aktueller Raum weiß hervorgehoben. Der Start-/Zielraum (Raum-ID 0) ist dauerhaft grün markiert statt weiß/grau; sobald der Escape-Countdown läuft, blinkt sein Kästchen (Fülldeckkraft wechselt alle 250 ms zwischen voll und fast transparent). Tatsächlich durchflogene Verbindungen zwischen zwei Räumen werden als kleiner Strich zwischen den jeweiligen Kästchen gezeichnet (unabhängig von noch unbekannten Abzweigungen desselben Raums).
 
 ---
 
