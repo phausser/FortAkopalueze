@@ -504,22 +504,16 @@ function drawMinimap(ctx) {
     const isCurrent = room.id === game.currentRoomId;
     const isGoal = room.id === 0;
 
-    let fill, stroke;
-    if (isGoal) {
-      let alpha = isCurrent ? 0.6 : 0.35;
-      if (escaping) alpha = blinkOn ? 1 : 0.15; // während des Countdowns blinkt der Ziel-/Startraum
-      fill = `rgba(68, 255, 136, ${alpha})`;
-      stroke = '#44ff88';
-    } else {
-      fill = isCurrent ? '#ffffff' : 'rgba(255, 255, 255, 0.12)';
-      stroke = isCurrent ? '#ffffff' : '#aaaaaa';
-    }
+    let fill = isCurrent ? '#ffffff' : 'rgba(255, 255, 255, 0.12)';
+    if (isGoal && escaping) fill = blinkOn ? '#ffffff' : 'rgba(255, 255, 255, 0.12)'; // blinkt im Countdown
+    const stroke = isCurrent ? '#ffffff' : '#aaaaaa';
+    const lineWidth = isGoal ? 3 : 1.5; // Start-/Zielraum: doppelt so starke Outline
 
     ctx.fillStyle = fill;
     ctx.fillRect(x, y, cell, cell);
     ctx.strokeStyle = stroke;
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x + 0.75, y + 0.75, cell - 1.5, cell - 1.5);
+    ctx.lineWidth = lineWidth;
+    ctx.strokeRect(x + lineWidth / 2, y + lineWidth / 2, cell - lineWidth, cell - lineWidth);
   }
 }
 

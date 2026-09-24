@@ -26,7 +26,7 @@
   Spieler feuert Projektile in Blickrichtung. Linie mit Leuchteffekt. Verbraucht Munition. Projektile verschwinden bei Wand-/Hindernis-/Gegnerkollision, keine Reichweitenbegrenzung.
 
 - [x] **16. Kamera, Scrolling & Minimap**
-  Kamera folgt dem Heli innerhalb eines Raums, geclampt auf Raumgrenzen (Grenzen werden nach einem Raumwechsel im selben Frame korrekt neu anhand des NEUEN Raums berechnet — war zwischenzeitlich verbuggt, siehe Bugfix-Historie). Raumwechsel: sofortiger Schnitt (kein Fade — weiterhin offen, siehe unten). Zwei geblurrte Parallax-Ebenen, Screen-Shake bei Reaktor-Treffern/-Explosion. Minimap unten links zeigt entdeckte Räume des Höhlen-Graphs, Start-/Zielraum grün markiert (blinkt während der Escape-Phase), durchflogene Verbindungen als Striche zwischen den Kästchen.
+  Kamera folgt dem Heli innerhalb eines Raums, geclampt auf Raumgrenzen (Grenzen werden nach einem Raumwechsel im selben Frame korrekt neu anhand des NEUEN Raums berechnet — war zwischenzeitlich verbuggt, siehe Bugfix-Historie). Raumwechsel: sofortiger Schnitt (kein Fade — weiterhin offen, siehe unten). Zwei geblurrte Parallax-Ebenen, Screen-Shake bei Reaktor-Treffern/-Explosion. Minimap unten links zeigt entdeckte Räume des Höhlen-Graphs, Start-/Zielraum mit doppelt dicker Outline markiert (blinkt während der Escape-Phase), durchflogene Verbindungen als Striche zwischen den Kästchen.
 
 ## Phase 3 – Feinde
 
