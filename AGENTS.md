@@ -278,6 +278,7 @@ Es gibt keine separate „DAMAGED"-Zwischenstufe mit eigenem Aussehen — der Re
 - **intact:** Orbitringe rotieren, Elektronen kreisen; bei Körperkontakt zieht der Reaktor `2.0 Energie/s` direkt vom Spieler ab.
 - **exploding:** Sequenz über 2.5 s: wachsende weiße Blitzkugel, 250-Partikel-Burst, Screen-Shake (`20`, klingt ab).
 - Gibt selbst keine Projektile ab. Wird typischerweise von 4–6 Gegnern bewacht (siehe Spawn-Logik im Reaktorraum).
+- **Timer vs. Darstellung entkoppelt:** `updateReactorTimer` (in `game.js`, aufgerufen mit `game.reactorRoom`) lässt `explodeTimer` und den Screen-Shake-Abklingprozess unabhängig vom aktuellen Raum weiterlaufen — sonst bliebe der Escape-Countdown aus, falls der Spieler den Reaktorraum während der Explosion verlässt. `updateReactor` (Partikel-Spawning, Kontaktschaden, Treffer-Erkennung) läuft dagegen nur, solange der Reaktorraum auch der aktuelle Raum ist. Beim Verlassen des Reaktorraums werden `particles` geleert und `screenShake` sofort auf 0 gesetzt (`resetScreenShake()`), damit Explosions-Partikel und Kameraruckeln nicht in andere Räume durchsickern.
 
 ### Interaktionen
 

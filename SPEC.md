@@ -197,9 +197,9 @@ Alle Gegner haben `hp`, ein geometrisches Sprite, eine Kollisionsbox und hinterl
 - **HP:** 25 (ein Spieler-Projektiltreffer = `−1 HP`).
 - **Körperkontakt:** zieht `2.0 Energie/s` direkt ab (kein Schild, keine Unverwundbarkeit), solange der Spieler im Kernradius bleibt.
 - Bei Zerstörung (`hp ≤ 0`):
-  1. Explosionssequenz über `2.5 s`: wachsende weiße Blitzkugel, 250 Partikel, Screen-Shake.
+  1. Explosionssequenz über `2.5 s`: wachsende weiße Blitzkugel, 250 Partikel, Screen-Shake — grafisch nur sichtbar, solange man sich im Reaktorraum befindet (Partikel und Screen-Shake werden beim Verlassen des Reaktorraums sofort zurückgesetzt, statt in andere Räume durchzusickern).
   2. Score `+5000`.
-  3. Nach Ablauf der Sequenz gilt der Reaktor als zerstört → Escape-Countdown startet (weiterhin im `PLAYING`-State, siehe Escape-Phase).
+  3. Nach Ablauf der Sequenz gilt der Reaktor als zerstört → Escape-Countdown startet (weiterhin im `PLAYING`-State, siehe Escape-Phase). Der Explosions-Timer läuft dafür unabhängig davon weiter, ob der Spieler noch im Reaktorraum ist oder ihn schon verlassen hat.
 - Wird typischerweise von 4–6 Gegnern bewacht (siehe Spawn-Logik Reaktorraum).
 
 ---

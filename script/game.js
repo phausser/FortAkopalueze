@@ -11,7 +11,7 @@ import { enemyProjectiles, updateEnemies, updateEnemyProjectiles, drawEnemies, d
 import { projectiles, shoot, updateProjectiles, drawProjectiles } from './projectiles.js';
 import { spawnPickupsForRoom, updatePickups, drawPickups } from './pickups.js';
 import { spawnSurvivorsForLevel, updateSurvivors, drawSurvivors, drawSurvivorIcon, survivorState, resetRescuedCount } from './survivors.js';
-import { spawnReactor, updateReactor, drawReactor, isReactorDestroyed, screenShake } from './reactor.js';
+import { spawnReactor, updateReactor, updateReactorTimer, drawReactor, isReactorDestroyed, screenShake, resetScreenShake } from './reactor.js';
 import { score, resetScore, addScore } from './score.js';
 import { startThrust, stopThrust, stopAllLoops, playDeath, playGameOver, playWin, startMusic } from './sound.js';
 
@@ -176,6 +176,11 @@ function handleRoomTransition(room) {
     visitedEdges.add(edgeKey(room.id, target.id));
     enemyProjectiles.length = 0;
     missiles.length = 0;
+    if (room === game.reactorRoom) {
+      // Explosions-Partikel und Screen-Shake gehören nur in den Reaktorraum.
+      particles.length = 0;
+      resetScreenShake();
+    }
     return;
   }
 }
@@ -295,8 +300,12 @@ function updatePlaying(dt) {
     updateLasers(room, dt);
     updatePickups(room, dt);
     updateSurvivors(room);
-    updateReactor(room, dt);
+    if (room === game.reactorRoom) updateReactor(room, dt);
   }
+  // Der Explosions-Timer läuft unabhängig vom aktuellen Raum weiter, sonst
+  // bliebe der Escape-Countdown aus, wenn man den Reaktorraum während der
+  // Explosion verlässt.
+  updateReactorTimer(game.reactorRoom, dt);
   updateParticles(dt);
   handleRoomTransition(room);
 

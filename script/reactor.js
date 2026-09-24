@@ -18,6 +18,8 @@ const ORBIT_FLATTEN = 0.32; // Ellipsen-Stauchung
 
 export let screenShake = 0;
 
+export function resetScreenShake() { screenShake = 0; }
+
 export function spawnReactor(room) {
   const electrons = [];
   ORBIT_TILTS.forEach((tilt, oi) => {
@@ -51,8 +53,12 @@ function electronPos(reactor, e) {
   };
 }
 
-export function updateReactor(room, dt) {
-  const r = room.reactor;
+// Fortschritt der Explosion (Timer, Screen-Shake-Abklingen) läuft IMMER weiter,
+// unabhängig davon ob der Spieler noch im Reaktorraum ist — sonst bliebe der
+// Escape-Countdown (der auf explodeTimer <= 0 wartet) für immer aus, wenn man
+// den Raum während der Explosion verlässt.
+export function updateReactorTimer(room, dt) {
+  const r = room?.reactor;
   if (!r) return;
 
   if (screenShake > 0) screenShake = Math.max(0, screenShake - dt * 18);
@@ -60,6 +66,18 @@ export function updateReactor(room, dt) {
 
   if (r.state === 'exploding') {
     r.explodeTimer -= dt;
+  }
+}
+
+// Interaktion mit dem Spieler (Partikel, Kontaktschaden, Treffer) — nur relevant
+// solange der Spieler tatsächlich im Reaktorraum ist, sonst grafisch/spielerisch
+// bedeutungslos und wird nicht ausgeführt (Partikel sollen nicht in andere
+// Räume "durchsickern").
+export function updateReactor(room, dt) {
+  const r = room.reactor;
+  if (!r) return;
+
+  if (r.state === 'exploding') {
     for (let i = 0; i < 4; i++) {
       const a = Math.random() * Math.PI * 2;
       const spd = 80 + Math.random() * 320;
